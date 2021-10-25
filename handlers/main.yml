@@ -1,0 +1,23 @@
+---
+# handlers file for audit
+
+- name: "Check if {{ audit_rulesd_path }}/audit.rules exists"
+  command: "test -e {{ audit_rulesd_path }}/audit.rules"
+  register: audit_cmd_result
+  changed_when: false
+  failed_when: false
+  listen: "reload auditd"
+
+- name: "Rename {{ audit_rulesd_path }}/audit.rules"
+  command: "mv -f {{ audit_rulesd_path }}/audit.rules {{ audit_rulesd_path }}/audit.rules.old"
+  register: audit_cmd_result
+  changed_when: true
+  when: audit_cmd_result.rc == 0
+  listen: "reload auditd"
+
+- name: generate rules and reload auditd
+  command: "augenrules --load"
+  register: audit_cmd_result
+  changed_when: not(audit_cmd_result.stdout is search('No change'))
+  when: ansible_virtualization_type not in _container_types
+  listen: "reload auditd"

@@ -1,0 +1,122 @@
+---
+# tasks file for audit
+
+- name: Install audit packages
+  package:
+    name: "{{ audit_packages }}"
+    state: present
+    update_cache: true
+
+- name: Enable auditd service
+  service:
+    name: auditd
+    enabled: true
+    state: started
+  when:
+    - ansible_virtualization_type not in _container_types
+    - ansible_connection not in _container_types
+
+
+# Now determine if the line have already audit=1
+- name: Check if audit=1 is present
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^\s*GRUB_CMDLINE_LINUX.*audit=1'
+    state: absent
+  check_mode: true
+  changed_when: false
+  register: audit_exist
+  when:
+    - ansible_virtualization_type not in _container_types
+    - ansible_connection not in _container_types
+
+- name: Error message
+  fail:
+    msg: ">>>> ERROR: Use grub role to add audit=1 option into cmdline <<<<"
+  when:
+    - ansible_virtualization_type not in _container_types
+    - ansible_connection not in _container_types
+    - not audit_exist.found
+
+# Now determine if the line have already audit_backlog_limit
+- name: Check if audit_backlog_limit is present
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^\s*GRUB_CMDLINE_LINUX.*audit_backlog_limit=.+'
+    state: absent
+  check_mode: true
+  changed_when: false
+  register: audit_exist
+  when:
+    - ansible_virtualization_type not in _container_types
+    - ansible_connection not in _container_types
+
+- name: Error message
+  fail:
+    msg: ">>>> ERROR: Use grub role to add audit_backlog_limit option into cmdline <<<<"
+  when:
+    - ansible_virtualization_type not in _container_types
+    - ansible_connection not in _container_types
+    - not audit_exist.found
+
+- name: Get min_uid for the system
+  shell: |
+    set -o pipefail
+    grep -E "^UID_MIN\s" /etc/login.defs | awk '{ print $2 }'
+  args:
+    executable: /bin/bash
+  register: audit_uid_min_cmd
+  changed_when: false
+
+- name: Set audit_uid_min variable with the result of last task
+  set_fact:
+    audit_uid_min: "{{ audit_uid_min_cmd.stdout | default(1000, true) }}"
+
+- name: Configure audit log storage size
+  replace:
+    path: "{{ audit_config_path }}"
+    regexp: "{{ item.find }}"
+    replace: "{{ item.replace }}"
+  loop:
+    - {find: '^max_log_file\s+=\s+[^{{ audit_log_file_size }}]', replace: 'max_log_file = {{ audit_log_file_size }}'}
+    - {find: '^max_log_file_action\s+=\s+((?!keep_logs).)*$', replace: 'max_log_file_action = keep_logs'}
+    - {find: '^space_left_action\s+=\s+((?!email).)*$', replace: 'space_left_action = email'}
+    - {find: '^action_mail_acct\s+=\s+((?!root).)*$', replace: 'action_mail_acct = root'}
+    - {find: '^admin_space_left_action\s+=\s+((?!suspend).)*$', replace: 'admin_space_left_action = suspend'}
+  notify: reload auditd
+
+- name: Ensure audit rules are configured properly
+  template:
+    dest: "{{ audit_rulesd_path }}/{{ item }}"
+    src: "{{ item }}"
+    owner: root
+    group: root
+    mode: 0600
+    force: "{{ force_overwrite_audit | default(false) }}"
+  notify: reload auditd
+  loop:
+    - 01-init.rules
+    - 10-bad-file-access.rules
+    - 10-dac.rules
+    - 10-datetime.rules
+    - 10-delete.rules
+    - 10-file-system-mounts.rules
+    - 10-login.rules
+    - 10-mac-policy.rules
+    - 10-modules.rules
+    - 10-network.rules
+    - 10-sessions.rules
+    - 10-sudolog.rules
+    - 10-user-group-info.rules
+
+- name: Ensure audit configuration is immutable
+  copy:
+    dest: "{{ audit_rulesd_path }}/99-finalize.rules"
+    content: |
+
+      -e 2
+
+    owner: root
+    group: root
+    mode: 0600
+  notify: reload auditd

@@ -1,0 +1,14 @@
+---
+
+- name: Validate force_overwrite_audit value
+  assert:
+    that:
+      - force_overwrite_audit | type_debug == 'bool'
+  when: force_overwrite_audit is defined
+
+- name: Validate audit_sudo_log
+  assert:
+    that:
+      - audit_sudo_log is defined
+      - audit_sudo_log is string
+      - audit_sudo_log | length > 0
