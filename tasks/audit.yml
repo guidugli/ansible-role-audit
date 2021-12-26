@@ -72,17 +72,58 @@
   set_fact:
     audit_uid_min: "{{ audit_uid_min_cmd.stdout | default(1000, true) }}"
 
-- name: Configure audit log storage size
-  replace:
+- name: "Apply audit configuration settings (true/false values)"
+  ansible.builtin.lineinfile:
     path: "{{ audit_config_path }}"
-    regexp: "{{ item.find }}"
-    replace: "{{ item.replace }}"
+    regexp: "^{{ _audit_vars[item] }}[ ]+=.*"
+    line: "{{ _audit_vars[item] }} = {{ 'yes' if lookup('vars', item) else 'no' }}"
+    mode: '0644'
+  when: lookup('vars', item, default='undefined') != 'undefined'
   loop:
-    - {find: '^max_log_file\s+=\s+[^{{ audit_log_file_size }}]', replace: 'max_log_file = {{ audit_log_file_size }}'}
-    - {find: '^max_log_file_action\s+=\s+((?!keep_logs).)*$', replace: 'max_log_file_action = keep_logs'}
-    - {find: '^space_left_action\s+=\s+((?!email).)*$', replace: 'space_left_action = email'}
-    - {find: '^action_mail_acct\s+=\s+((?!root).)*$', replace: 'action_mail_acct = root'}
-    - {find: '^admin_space_left_action\s+=\s+((?!suspend).)*$', replace: 'admin_space_left_action = suspend'}
+    - audit_local_events
+    - audit_write_logs
+    - audit_verify_email
+    - audit_use_libwrap
+    - audit_distribute_network
+  notify: reload auditd
+
+- name: Apply audit configuration settings
+  ansible.builtin.lineinfile:
+    path: "{{ audit_config_path }}"
+    regexp: "^{{ _audit_vars[item] }}[ ]+=.*"
+    line: "{{ _audit_vars[item] }} = {{ lookup('vars', item) }}"
+    mode: '0644'
+  when: lookup('vars', item, default='undefined') != 'undefined'
+  loop:
+    - audit_log_file
+    - audit_log_format
+    - audit_log_group
+    - audit_priority_boost
+    - audit_flush
+    - audit_freq
+    - audit_num_logs
+    - audit_name_format
+    - audit_name
+    - audit_max_log_file
+    - audit_max_log_file_action
+    - audit_action_mail_acct
+    - audit_space_left
+    - audit_space_left_action
+    - audit_admin_space_left
+    - audit_admin_space_left_action
+    - audit_disk_full_action
+    - audit_disk_error_action
+    - audit_tcp_listen_port
+    - audit_tcp_listen_queue
+    - audit_tcp_max_per_addr
+    - audit_tcp_client_ports
+    - audit_tcp_client_max_idle
+    - audit_transport
+    - audit_krb5_principal
+    - audit_krb5_key_file
+    - audit_q_depth
+    - audit_overflow_action
+    - audit_plugin_dir
   notify: reload auditd
 
 - name: Ensure audit rules are configured properly
@@ -94,20 +135,7 @@
     mode: 0600
     force: "{{ force_overwrite_audit | default(false) }}"
   notify: reload auditd
-  loop:
-    - 01-init.rules
-    - 10-bad-file-access.rules
-    - 10-dac.rules
-    - 10-datetime.rules
-    - 10-delete.rules
-    - 10-file-system-mounts.rules
-    - 10-login.rules
-    - 10-mac-policy.rules
-    - 10-modules.rules
-    - 10-network.rules
-    - 10-sessions.rules
-    - 10-sudolog.rules
-    - 10-user-group-info.rules
+  loop: "{{ audit_rules_files | default([]) }}"
 
 - name: Ensure audit configuration is immutable
   copy:

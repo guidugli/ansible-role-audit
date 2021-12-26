@@ -1,10 +1,101 @@
 ---
 
-- name: Validate force_overwrite_audit value
+- name: Check if these 'true','false' values are invalid
+  assert:
+    quiet: true
+    that:
+      - (lookup('vars', item) | lower) in ['true','false']
+    msg: "Invalid value for {{ item }}. Allowed values are 'true', 'false'."
+  when: lookup('vars', item, default='undefined') != 'undefined'
+  loop:
+    - audit_local_events
+    - audit_write_logs
+    - audit_verify_email
+    - audit_use_libwrap
+    - audit_distribute_network
+    - force_overwrite_audit
+
+- name: Check integer values
+  assert:
+    quiet: true
+    that:
+      - (lookup('vars', item) | int(-1)) >= 0
+    msg: "Invalid integer value for {{ item }}"
+  when: lookup('vars', item, default='undefined') != 'undefined'
+  loop:
+    - audit_priority_boost
+    - audit_freq
+    - audit_num_logs
+    - audit_max_log_file
+    - audit_admin_space_left
+    - audit_tcp_listen_port
+    - audit_tcp_listen_queue
+    - audit_tcp_max_per_addr
+    - audit_tcp_client_max_idle
+    - audit_q_depth
+    - audit_max_restarts
+
+- name: Check audit_log_format
   assert:
     that:
-      - force_overwrite_audit | type_debug == 'bool'
-  when: force_overwrite_audit is defined
+      - (audit_log_format | lower) in ['enriched', 'raw']
+  when: audit_log_format is defined
+
+- name: Check audit_flush
+  assert:
+    that:
+      - (audit_flush | lower) in ['none', 'incremental', 'incremental_async', 'data', 'sync']
+  when: audit_flush is defined
+
+- name: Check audit_name_format
+  assert:
+    that:
+      - (audit_name_format | lower) in ['none', 'hostname', 'fqd', 'numeric', 'user']
+  when: audit_name_format is defined
+
+- name: Check audit_max_log_file_action
+  assert:
+    that:
+      - (audit_max_log_file_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate', 'keep_logs']
+  when: audit_max_log_file_action is defined
+
+- name: Check audit_space_left_action
+  assert:
+    that:
+      - (audit_space_left_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate',
+                                              'email', 'exec', 'single', 'halt']
+  when: audit_space_left_action is defined
+
+- name: Check audit_admin_space_left_action
+  assert:
+    that:
+      - (audit_admin_space_left_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate',
+                                                    'email', 'exec', 'single', 'halt']
+  when: audit_admin_space_left_action is defined
+
+- name: Check audit_disk_full_action
+  assert:
+    that:
+      - (audit_disk_full_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate', 'exec', 'single', 'halt']
+  when: audit_disk_full_action is defined
+
+- name: Check audit_disk_error_action
+  assert:
+    that:
+      - (audit_disk_error_action | lower) in ['ignore', 'syslog', 'suspend', 'exec', 'single', 'halt']
+  when: audit_disk_error_action is defined
+
+- name: Check audit_overflow_action
+  assert:
+    that:
+      - (audit_overflow_action | lower) in ['ignore', 'syslog', 'suspend', 'exec', 'single', 'halt']
+  when: audit_overflow_action is defined
+
+- name: Check audit_transport
+  assert:
+    that:
+      - (audit_transport | lower) in ['tcp', 'krb5']
+  when: audit_transport is defined
 
 - name: Validate audit_sudo_log
   assert:
@@ -12,3 +103,9 @@
       - audit_sudo_log is defined
       - audit_sudo_log is string
       - audit_sudo_log | length > 0
+
+- name: Validate audit_rules_files
+  assert:
+    that:
+      - audit_rules_files is sequence
+  when: audit_rules_files is defined

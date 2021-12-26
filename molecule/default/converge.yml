@@ -1,6 +1,21 @@
 ---
 - name: Converge
   hosts: all
+  vars:
+    audit_rules_files:
+      - 01-init.rules
+      - 10-bad-file-access.rules
+      - 10-dac.rules
+      - 10-datetime.rules
+      - 10-delete.rules
+      - 10-file-system-mounts.rules
+      - 10-login.rules
+      - 10-mac-policy.rules
+      - 10-modules.rules
+      - 10-network.rules
+      - 10-sessions.rules
+      - 10-sudolog.rules
+      - 10-user-group-info.rules
   pre_tasks:
 #    - name: update RedHat systems running yum
 #      yum:
