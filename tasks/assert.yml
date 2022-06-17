@@ -1,7 +1,7 @@
 ---
 
 - name: Check if these 'true','false' values are invalid
-  assert:
+  ansible.builtin.assert:
     quiet: true
     that:
       - (lookup('vars', item) | lower) in ['true','false']
@@ -16,7 +16,7 @@
     - force_overwrite_audit
 
 - name: Check integer values
-  assert:
+  ansible.builtin.assert:
     quiet: true
     that:
       - (lookup('vars', item) | int(-1)) >= 0
@@ -36,76 +36,76 @@
     - audit_max_restarts
 
 - name: Check audit_log_format
-  assert:
+  ansible.builtin.assert:
     that:
       - (audit_log_format | lower) in ['enriched', 'raw']
   when: audit_log_format is defined
 
 - name: Check audit_flush
-  assert:
+  ansible.builtin.assert:
     that:
       - (audit_flush | lower) in ['none', 'incremental', 'incremental_async', 'data', 'sync']
   when: audit_flush is defined
 
 - name: Check audit_name_format
-  assert:
+  ansible.builtin.assert:
     that:
       - (audit_name_format | lower) in ['none', 'hostname', 'fqd', 'numeric', 'user']
   when: audit_name_format is defined
 
 - name: Check audit_max_log_file_action
-  assert:
+  ansible.builtin.assert:
     that:
       - (audit_max_log_file_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate', 'keep_logs']
   when: audit_max_log_file_action is defined
 
 - name: Check audit_space_left_action
-  assert:
+  ansible.builtin.assert:
     that:
       - (audit_space_left_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate',
                                               'email', 'exec', 'single', 'halt']
   when: audit_space_left_action is defined
 
 - name: Check audit_admin_space_left_action
-  assert:
+  ansible.builtin.assert:
     that:
       - (audit_admin_space_left_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate',
                                                     'email', 'exec', 'single', 'halt']
   when: audit_admin_space_left_action is defined
 
 - name: Check audit_disk_full_action
-  assert:
+  ansible.builtin.assert:
     that:
       - (audit_disk_full_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate', 'exec', 'single', 'halt']
   when: audit_disk_full_action is defined
 
 - name: Check audit_disk_error_action
-  assert:
+  ansible.builtin.assert:
     that:
       - (audit_disk_error_action | lower) in ['ignore', 'syslog', 'suspend', 'exec', 'single', 'halt']
   when: audit_disk_error_action is defined
 
 - name: Check audit_overflow_action
-  assert:
+  ansible.builtin.assert:
     that:
       - (audit_overflow_action | lower) in ['ignore', 'syslog', 'suspend', 'exec', 'single', 'halt']
   when: audit_overflow_action is defined
 
 - name: Check audit_transport
-  assert:
+  ansible.builtin.assert:
     that:
       - (audit_transport | lower) in ['tcp', 'krb5']
   when: audit_transport is defined
 
 - name: Validate audit_sudo_log
-  assert:
+  ansible.builtin.assert:
     that:
       - audit_sudo_log is defined
       - audit_sudo_log is string
       - audit_sudo_log | length > 0
 
 - name: Validate audit_rules_files
-  assert:
+  ansible.builtin.assert:
     that:
       - audit_rules_files is sequence
   when: audit_rules_files is defined

@@ -2,13 +2,13 @@
 # tasks file for audit
 
 - name: Install audit packages
-  package:
+  ansible.builtin.package:
     name: "{{ audit_packages }}"
     state: present
     update_cache: true
 
 - name: Enable auditd service
-  service:
+  ansible.builtin.service:
     name: auditd
     enabled: true
     state: started
@@ -19,7 +19,7 @@
 
 # Now determine if the line have already audit=1
 - name: Check if audit=1 is present
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/default/grub
     regexp: '^\s*GRUB_CMDLINE_LINUX.*audit=1'
     state: absent
@@ -31,7 +31,7 @@
     - ansible_connection not in _container_types
 
 - name: Error message
-  fail:
+  ansible.builtin.fail:
     msg: ">>>> ERROR: Use grub role to add audit=1 option into cmdline <<<<"
   when:
     - ansible_virtualization_type not in _container_types
@@ -40,7 +40,7 @@
 
 # Now determine if the line have already audit_backlog_limit
 - name: Check if audit_backlog_limit is present
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/default/grub
     regexp: '^\s*GRUB_CMDLINE_LINUX.*audit_backlog_limit=.+'
     state: absent
@@ -52,7 +52,7 @@
     - ansible_connection not in _container_types
 
 - name: Error message
-  fail:
+  ansible.builtin.fail:
     msg: ">>>> ERROR: Use grub role to add audit_backlog_limit option into cmdline <<<<"
   when:
     - ansible_virtualization_type not in _container_types
@@ -60,7 +60,7 @@
     - not audit_exist.found
 
 - name: Get min_uid for the system
-  shell: |
+  ansible.builtin.shell: |
     set -o pipefail
     grep -E "^UID_MIN\s" /etc/login.defs | awk '{ print $2 }'
   args:
@@ -69,7 +69,7 @@
   changed_when: false
 
 - name: Set audit_uid_min variable with the result of last task
-  set_fact:
+  ansible.builtin.set_fact:
     audit_uid_min: "{{ audit_uid_min_cmd.stdout | default(1000, true) }}"
 
 - name: "Apply audit configuration settings (true/false values)"
@@ -127,7 +127,7 @@
   notify: reload auditd
 
 - name: Ensure audit rules are configured properly
-  template:
+  ansible.builtin.template:
     dest: "{{ audit_rulesd_path }}/{{ item }}"
     src: "{{ item }}"
     owner: root
@@ -138,7 +138,7 @@
   loop: "{{ audit_rules_files | default([]) }}"
 
 - name: Ensure audit configuration is immutable
-  copy:
+  ansible.builtin.copy:
     dest: "{{ audit_rulesd_path }}/99-finalize.rules"
     content: |
 

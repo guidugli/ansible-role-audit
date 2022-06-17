@@ -18,13 +18,13 @@
       - 10-user-group-info.rules
   pre_tasks:
 #    - name: update RedHat systems running yum
-#      yum:
+#      ansible.builtin.yum:
 #        state: latest
 #        name: '*'
 #      when: ansible_pkg_mgr in ['yum', 'dnf']
 
     - name: update Ubuntu/Debian systems
-      apt:
+      ansible.builtin.apt:
 #        upgrade: dist
         update_cache: true
         cache_valid_time: 3600
