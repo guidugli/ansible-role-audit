@@ -1,8 +1,8 @@
 ---
 # tasks file for audit
 
-- name: include assert.yml
+- name: Include assert.yml
   ansible.builtin.include_tasks: assert.yml
 
-- name: include audit.yml
+- name: Include audit.yml
   ansible.builtin.include_tasks: audit.yml

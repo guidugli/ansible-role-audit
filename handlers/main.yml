@@ -15,7 +15,7 @@
   when: audit_cmd_result.rc == 0
   listen: "reload auditd"
 
-- name: generate rules and reload auditd
+- name: Generate rules and reload auditd
   ansible.builtin.command: "augenrules --load"
   register: audit_cmd_result
   changed_when: not(audit_cmd_result.stdout is search('No change'))
