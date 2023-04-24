@@ -1,0 +1,10 @@
+## Shell/profile configurations
+-w /etc/profile.d/ -p wa -k shell_profiles
+-w /etc/profile -p wa -k shell_profiles
+-w /etc/shells -p wa -k shell_profiles
+-w /etc/bashrc -p wa -k shell_profiles
+-w /etc/csh.cshrc -p wa -k shell_profiles
+-w /etc/csh.login -p wa -k shell_profiles
+-w /etc/fish/ -p wa -k shell_profiles
+-w /etc/zsh/ -p wa -k shell_profiles
+

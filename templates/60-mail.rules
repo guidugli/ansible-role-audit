@@ -1,0 +1,5 @@
+## Mail configuration
+-w /etc/aliases -p wa -k mail
+-w /etc/postfix/ -p wa -k mail
+-w /etc/exim4/ -p wa -k mail
+

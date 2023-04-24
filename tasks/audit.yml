@@ -126,6 +126,19 @@
     - audit_plugin_dir
   notify: reload auditd
 
+- name: Find privileged commands
+  ansible.builtin.shell: |
+    set -o pipefail
+    find / -xdev \( -perm -4000 -o -perm -2000 \) -type f | awk '{print $1}'
+  changed_when: false
+  register: audit_aux_cmd
+  args:
+    executable: /bin/bash
+
+- name: Set variable audit_priv_command
+  ansible.builtin.set_fact:
+    audit_priv_command: "{{ audit_aux_cmd.stdout_lines | default([]) }}"
+
 - name: Ensure audit rules are configured properly
   ansible.builtin.template:
     dest: "{{ audit_rulesd_path }}/{{ item }}"

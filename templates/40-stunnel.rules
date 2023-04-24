@@ -1,0 +1,4 @@
+## Stunnel
+-w /usr/sbin/stunnel -p x -k stunnel
+-w /usr/bin/stunnel -p x -k stunnel
+

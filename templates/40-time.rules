@@ -1,0 +1,7 @@
+## Time
+-a always,exit -F arch=b64 -F uid!=ntp -S adjtimex -S settimeofday -k time-change
+-a always,exit -F arch=b32 -F uid!=ntp -S adjtimex -S settimeofday -S stime -k time-change
+-a always,exit -F arch=b64 -F uid!=ntp -S clock_settime -k time-change
+-a always,exit -F arch=b32 -F uid!=ntp -S clock_settime -k time-change
+-w /etc/localtime -p wa -k time-change
+

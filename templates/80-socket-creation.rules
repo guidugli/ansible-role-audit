@@ -1,0 +1,9 @@
+# Socket Creations
+# will catch both IPv4 and IPv6
+
+-a always,exit -F arch=b32 -S socket -F a0=2  -k T1011_Exfiltration_Over_Other_Network_Medium
+-a always,exit -F arch=b64 -S socket -F a0=2  -k T1011_Exfiltration_Over_Other_Network_Medium
+
+-a always,exit -F arch=b32 -S socket -F a0=10 -k T1011_Exfiltration_Over_Other_Network_Medium
+-a always,exit -F arch=b64 -S socket -F a0=10 -k T1011_Exfiltration_Over_Other_Network_Medium
+

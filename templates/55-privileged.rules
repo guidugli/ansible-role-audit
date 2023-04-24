@@ -1,0 +1,6 @@
+# Privileged processes with suid/sgid set
+# The list is generated automatically by the role based on the target system
+
+{% for auxcmd in audit_priv_command %}
+-a always,exit -F path={{ auxcmd }} -F perm=x -F auid>={{ audit_uid_min }} -F auid!=unset -k privileged
+{% endfor %}

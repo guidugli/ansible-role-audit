@@ -1,0 +1,16 @@
+## User, group, password databases
+-w /etc/group -p wa -k identity
+-w /etc/passwd -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/security/opasswd -p wa -k identity
+
+## Tools to change group identifiers
+-w /usr/sbin/groupadd -p x -k group_modification
+-w /usr/sbin/groupmod -p x -k group_modification
+-w /usr/sbin/addgroup -p x -k group_modification
+-w /usr/sbin/useradd -p x -k user_modification
+-w /usr/sbin/userdel -p x -k user_modification
+-w /usr/sbin/usermod -p x -k user_modification
+-w /usr/sbin/adduser -p x -k user_modification
+

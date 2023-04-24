@@ -1,0 +1,5 @@
+# Systemd
+-w /bin/systemctl -p x -k systemd
+-w /etc/systemd/ -p wa -k systemd
+-w /usr/lib/systemd -p wa -k systemd
+

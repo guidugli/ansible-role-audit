@@ -1,0 +1,5 @@
+## System startup scripts
+-w /etc/inittab -p wa -k init
+-w /etc/init.d/ -p wa -k init
+-w /etc/init/ -p wa -k init
+

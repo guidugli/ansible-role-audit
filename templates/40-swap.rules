@@ -1,0 +1,4 @@
+## Change swap
+-a always,exit -F arch=b64 -S swapon -S swapoff -F auid!=unset -k swap
+-a always,exit -F arch=b32 -S swapon -S swapoff -F auid!=unset -k swap
+

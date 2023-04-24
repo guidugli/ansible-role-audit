@@ -1,0 +1,25 @@
+## Suspicious shells
+-w /bin/ash -p x -k susp_shell
+-w /bin/csh -p x -k susp_shell
+-w /bin/fish -p x -k susp_shell
+-w /bin/tcsh -p x -k susp_shell
+-w /bin/tclsh -p x -k susp_shell
+-w /bin/xonsh -p x -k susp_shell
+-w /usr/local/bin/xonsh -p x -k susp_shell
+-w /bin/open -p x -k susp_shell
+-w /bin/rbash -p x -k susp_shell
+
+### https://clustershell.readthedocs.io/
+-w /bin/clush -p x -k susp_shell
+-w /usr/local/bin/clush -p x -k susp_shell
+-w /etc/clustershell/clush.conf -p x -k susp_shell
+
+### https://github.com/xxh/xxh
+-w /usr/local/bin/xxh.bash -p x -k susp_shell
+-w /usr/local/bin/xxh.xsh -p x -k susp_shell
+-w /usr/local/bin/xxh.zsh -p x -k susp_shell
+
+### https://github.com/tmux/tmux
+-w /bin/tmux -p x -k susp_shell
+-w /usr/local/bin/tmux -p x -k susp_shell
+

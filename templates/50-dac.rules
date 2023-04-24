@@ -1,0 +1,11 @@
+-a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>={{ audit_uid_min }} -F auid!=unset -k perm_mod
+-a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>={{ audit_uid_min }} -F auid!=unset -k perm_mod
+-a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>={{ audit_uid_min }} -F auid!=unset -k perm_mod
+-a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>={{ audit_uid_min }} -F auid!=unset -k perm_mod
+-a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>={{ audit_uid_min }} -F auid!=unset -k perm_mod
+-a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>={{ audit_uid_min }} -F auid!=unset -k perm_mod
+
+# ACL changes
+-a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=unset -k perm_mod
+-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=unset -k perm_mod
+

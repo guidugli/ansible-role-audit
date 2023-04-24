@@ -1,0 +1,24 @@
+# Kernel parameters
+-w /etc/sysctl.conf -p wa -k sysctl
+-w /etc/sysctl.d -p wa -k sysctl
+
+## Modprobe configuration
+-w /etc/modprobe.conf -p wa -k modprobe
+-w /etc/modprobe.d -p wa -k modprobe
+
+## KExec usage (all actions)
+-a always,exit -F arch=b64 -S kexec_load -k KEXEC
+-a always,exit -F arch=b32 -S sys_kexec_load -k KEXEC
+
+## Special files
+-a always,exit -F arch=b32 -S mknod -S mknodat -k specialfiles
+-a always,exit -F arch=b64 -S mknod -S mknodat -k specialfiles
+
+## Kernel module loading and unloading
+-w /sbin/insmod -p x -k kernel_modules
+-w /sbin/rmmod -p x -k kernel_modules
+-w /sbin/modprobe -p x -k kernel_modules
+-a always,exit -F arch=b64 -S finit_module -S init_module -S delete_module -F auid!=unset -k kernel_modules
+-a always,exit -F arch=b32 -S finit_module -S init_module -S delete_module -F auid!=unset -k kernel_modules
+#-a always,exit -F path=/usr/bin/kmod -F perm=x -F auid>={{ audit_uid_min }} -F auid!=unset -k kernel_modules
+

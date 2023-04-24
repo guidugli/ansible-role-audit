@@ -1,0 +1,4 @@
+## Mount operations
+-a always,exit -F arch=b64 -S mount -S umount2 -F auid!=unset -k mount
+-a always,exit -F arch=b32 -S mount -S umount -S umount2 -F auid!=unset -k mount
+

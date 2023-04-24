@@ -1,7 +1,11 @@
 Ansible Role: audit
 =========
 
-An Ansible Role that install and configure auditing on RHEL/CentOS, Fedora and Debian/Ubuntu.
+An Ansible Role that install and configure auditing on RHEL/CentOS, Fedora and Debian/Ubuntu. 
+
+Default rules are based on CIS RedHat/Ubuntu/Debian benchmark and also on this github repository https://github.com/Neo23x0/auditd[https://github.com/Neo23x0/auditd]
+
+Disclaimer: I am no security expert and by no means you should use this role without first learning how audit works and the rules configured by this role. The security of your servers is YOUR responsibility!
 
 Requirements
 ------------
@@ -178,20 +182,46 @@ This variable is defined in vars/main.yml and controls where the rules.d directo
 
     audit_rules_files:
       - 01-init.rules
-      - 10-bad-file-access.rules
-      - 10-dac.rules
-      - 10-datetime.rules
-      - 10-delete.rules
-      - 10-file-system-mounts.rules
-      - 10-login.rules
-      - 10-mac-policy.rules
-      - 10-modules.rules
-      - 10-network.rules
-      - 10-sessions.rules
-      - 10-sudolog.rules
-      - 10-user-group-info.rules
+      - 10-self-audit.rules
+      - 20-filters.rules
+      - 30-kernel.rules
+      - 40-identity.rules
+      - 40-login.rules
+      - 40-mount.rules
+      - 40-stunnel.rules
+      - 40-swap.rules
+      - 40-time.rules
+      - 50-cron.rules
+      - 50-dac.rules
+      - 50-hostname.rules
+      - 50-ip-connections.rules
+      - 50-network.rules
+      - 50-pkg-manager.rules
+      - 50-remote-shell.rules
+      - 50-sudoers.rules
+      - 50-system-libs.rules
+      - 50-system-startup.rules
+      - 55-privileged.rules
+      - 60-mail.rules
+      - 60-pam.rules
+      - 60-sshd.rules
+      - 60-systemd.rules
+      - 70-access.rules
+      - 70-mac-policy.rules
+      - 70-power-state.rules
+      - 70-sessions.rules
+      - 70-shell-profiles.rules
+      - 80-data-compression.rules
+      - 80-privilege-abuse.rules
+      - 80-reconnaissance.rules
+      - 80-socket-creation.rules
+      - 80-suspicious.rules
+      - 80-suspicious-shells.rules
+      - 85-network.rules
+      - 85-virtualization.rules
+      - 90-32bit-api-exploitation.rules
 
-Specify the rules' files to be copied.
+Specify the rules' files to be copied. The files listed above are available by default, but user can create their own files as needed. The role provides the rules separated in several small files (instead of a big one), to promote re-usability: you can select wich rules to implement, and you can create your own custom rules.
 
 Dependencies
 ------------
