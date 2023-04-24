@@ -34,14 +34,18 @@
       - 70-sessions.rules
       - 70-shell-profiles.rules
       - 80-data-compression.rules
+      - 80-network.rules
       - 80-privilege-abuse.rules
       - 80-reconnaissance.rules
       - 80-socket-creation.rules
       - 80-suspicious.rules
       - 80-suspicious-shells.rules
-      - 85-network.rules
-      - 85-virtualization.rules
-      - 90-32bit-api-exploitation.rules
+      - 80-virtualization.rules
+      - 90-cred-in-files.rules
+      - 90-IPC.rules
+      - 90-root-exec.rules
+      - 90-special-sw.rules
+      - 95-32bit-api-exploitation.rules
   pre_tasks:
 #    - name: update RedHat systems running yum
 #      ansible.builtin.yum:

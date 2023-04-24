@@ -1,0 +1,23 @@
+## GDS specific secrets
+-w /etc/puppet/ssl -p wa -k puppet_ssl
+
+## IBM Bigfix BESClient
+-a always,exit -F arch=b64 -S open -F dir=/opt/BESClient -F success=0 -k soft_besclient
+-w /var/opt/BESClient/ -p wa -k soft_besclient
+
+## CHEF https://www.chef.io/chef/
+-w /etc/chef -p wa -k soft_chef
+
+## Salt
+## https://saltproject.io/
+## https://docs.saltproject.io/en/latest/ref/configuration/master.html
+-w /etc/salt -p wa -k soft_salt
+-w /usr/local/etc/salt -p wa -k soft_salt
+
+## Otter
+## https://inedo.com/otter
+-w /etc/otter -p wa -k soft_otter
+
+## Kubelet
+-w /usr/bin/kubelet -k kubelet
+

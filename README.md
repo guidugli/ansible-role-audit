@@ -212,16 +212,20 @@ This variable is defined in vars/main.yml and controls where the rules.d directo
       - 70-sessions.rules
       - 70-shell-profiles.rules
       - 80-data-compression.rules
+      - 80-network.rules
       - 80-privilege-abuse.rules
       - 80-reconnaissance.rules
       - 80-socket-creation.rules
       - 80-suspicious.rules
       - 80-suspicious-shells.rules
-      - 85-network.rules
-      - 85-virtualization.rules
-      - 90-32bit-api-exploitation.rules
+      - 80-virtualization.rules
+      - 90-cred-in-files.rules
+      - 90-IPC.rules
+      - 90-root-exec.rules
+      - 90-special-sw.rules
+      - 95-32bit-api-exploitation.rules
 
-Specify the rules' files to be copied. The files listed above are available by default, but user can create their own files as needed. The role provides the rules separated in several small files (instead of a big one), to promote re-usability: you can select wich rules to implement, and you can create your own custom rules.
+Specify the rules' files to be copied. By default, no file is selected to be copied. The files listed above are provided by the role, but user can create their own files as needed. The role provides the rules separated in several small files (instead of a big one), to promote re-usability: you can select wich rules to implement, and you can create your own custom rules. The rules are based on CIS and other security standards.
 
 Dependencies
 ------------

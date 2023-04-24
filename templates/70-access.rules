@@ -8,8 +8,9 @@
 #-a always,exit -F arch=b64 -S open -F dir=/home -F success=0 -k unauthedfileaccess
 #-a always,exit -F arch=b64 -S open -F dir=/srv -F success=0 -k unauthedfileaccess
 
--a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>={{ audit_uid_min }} -F auid!=unset -k unauthedfileaccess
--a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>={{ audit_uid_min }} -F auid!=unset -k unauthedfileaccess
--a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>={{ audit_uid_min }} -F auid!=unset -k unauthedfileaccess
--a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>={{ audit_uid_min }} -F auid!=unset -k unauthedfileaccess
+### Unauthorized Access (unsuccessful)
+-a always,exit -F arch=b64 -S creat -S open -S openat -S open_by_handle_at -S rename -S renameat -S truncate -S ftruncate -F exit=-EACCES -F auid>={{ audit_uid_min }} -F auid!=unset -k unauthedfileaccess
+-a always,exit -F arch=b32 -S creat -S open -S openat -S open_by_handle_at -S rename -S renameat -S truncate -S ftruncate -F exit=-EACCES -F auid>={{ audit_uid_min }} -F auid!=unset -k unauthedfileaccess
+-a always,exit -F arch=b64 -S creat -S open -S openat -S open_by_handle_at -S rename -S renameat -S truncate -S ftruncate -F exit=-EPERM -F auid>={{ audit_uid_min }} -F auid!=unset -k unauthedfileaccess
+-a always,exit -F arch=b32 -S creat -S open -S openat -S open_by_handle_at -S rename -S renameat -S truncate -S ftruncate -F exit=-EPERM -F auid>={{ audit_uid_min }} -F auid!=unset -k unauthedfileaccess
 
