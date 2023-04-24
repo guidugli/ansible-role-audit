@@ -4,6 +4,7 @@
 _audit_packages:
   default: ['auditd', 'audispd-plugins']
   RedHat: ['audit', 'audit-libs']
+  Rocky: ['audit', 'audit-libs']
   CentOS: ['audit', 'audit-libs']
   Fedora: ['audit', 'audit-libs']
 
