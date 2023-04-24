@@ -65,7 +65,6 @@
         name:
           - sudo
           - vim
-          - curl
         state: latest
   roles:
     - role: guidugli.audit
