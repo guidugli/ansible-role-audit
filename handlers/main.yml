@@ -2,6 +2,7 @@
 # handlers file for audit
 
 - name: "Check if {{ audit_rulesd_path }}/audit.rules exists"
+  become: yes
   ansible.builtin.command: "test -e {{ audit_rulesd_path }}/audit.rules"
   register: audit_cmd_result
   changed_when: false
@@ -9,6 +10,7 @@
   listen: "reload auditd"
 
 - name: "Rename {{ audit_rulesd_path }}/audit.rules"
+  become: yes
   ansible.builtin.command: "mv -f {{ audit_rulesd_path }}/audit.rules {{ audit_rulesd_path }}/audit.rules.old"
   register: audit_cmd_result
   changed_when: true
@@ -16,6 +18,7 @@
   listen: "reload auditd"
 
 - name: Generate rules and reload auditd
+  become: yes
   ansible.builtin.command: "augenrules --load"
   register: audit_cmd_result
   changed_when: not(audit_cmd_result.stdout is search('No change'))
