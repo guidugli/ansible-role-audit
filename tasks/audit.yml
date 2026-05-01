@@ -27,6 +27,7 @@
   changed_when: false
   register: audit_exist
   when:
+    - not audit_skip_grub_check
     - ansible_virtualization_type not in _container_types
     - ansible_connection not in _container_types
 

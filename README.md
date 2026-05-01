@@ -21,6 +21,10 @@ Role Variables
 
 This yes/no keyword specifies whether or not to include local events. Normally you want local events so the default value is yes. Cases where you would set this to no is when you want to aggregate events only from the network.
 
+    audit_skip_grub_check: false
+
+Check if grub configuration has the parameter audit=1. If not, the role will fail. If this variable is set to true, it will skip this verification.
+
     #audit_log_file: /var/log/audit/audit.log
 
 This keyword specifies the full path name to the log file where audit records will be stored. It must be a regular file.
