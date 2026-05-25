@@ -1,0 +1,318 @@
+---
+argument_specs:
+  main:
+    short_description: Install and configure Linux auditing
+    description:
+      - Install and configure auditd and related audit rules on Linux systems.
+
+    options:
+      audit_local_events:
+        type: bool
+        required: false
+        default: true
+        description:
+          - Whether local events should be included by auditd.
+
+      audit_skip_grub_check:
+        type: bool
+        required: false
+        default: false
+        description:
+          - Skip validation that GRUB contains audit=1 and audit_backlog_limit.
+
+      audit_log_file:
+        type: str
+        required: false
+        description:
+          - Full path to the audit log file.
+
+      audit_write_logs:
+        type: bool
+        required: false
+        default: true
+        description:
+          - Whether audit logs should be written to disk.
+
+      audit_log_format:
+        type: str
+        required: false
+        default: enriched
+        choices:
+          - raw
+          - enriched
+        description:
+          - Format used to store audit logs.
+
+      audit_log_group:
+        type: str
+        required: false
+        description:
+          - Group owner applied to the audit log file.
+
+      audit_priority_boost:
+        type: int
+        required: false
+        description:
+          - Non-negative priority boost for auditd.
+
+      audit_flush:
+        type: str
+        required: false
+        choices:
+          - none
+          - incremental
+          - incremental_async
+          - data
+          - sync
+        description:
+          - Flush mode for auditd.
+
+      audit_freq:
+        type: int
+        required: false
+        description:
+          - Flush record frequency used with incremental flush modes.
+
+      audit_num_logs:
+        type: int
+        required: false
+        description:
+          - Number of rotated log files to keep.
+
+      audit_name_format:
+        type: str
+        required: false
+        choices:
+          - none
+          - hostname
+          - fqd
+          - numeric
+          - user
+        description:
+          - Node name insertion behavior for audit events.
+
+      audit_name:
+        type: str
+        required: false
+        description:
+          - Custom node identifier used when audit_name_format is user.
+
+      audit_max_log_file:
+        type: int
+        required: false
+        default: 256
+        description:
+          - Maximum audit log file size in MiB.
+
+      audit_max_log_file_action:
+        type: str
+        required: false
+        default: keep_logs
+        choices:
+          - ignore
+          - syslog
+          - suspend
+          - rotate
+          - keep_logs
+        description:
+          - Action when the maximum log file size is reached.
+
+      audit_verify_email:
+        type: bool
+        required: false
+        description:
+          - Whether to verify the domain in action_mail_acct.
+
+      audit_action_mail_acct:
+        type: str
+        required: false
+        description:
+          - Email address or alias used for audit alerts.
+
+      audit_space_left:
+        type: raw
+        required: false
+        description:
+          - Remaining disk space threshold in MiB or percentage before action is taken.
+
+      audit_space_left_action:
+        type: str
+        required: false
+        choices:
+          - ignore
+          - syslog
+          - suspend
+          - rotate
+          - email
+          - exec
+          - single
+          - halt
+        description:
+          - Action when the audit filesystem is getting low on space.
+
+      audit_admin_space_left:
+        type: int
+        required: false
+        description:
+          - Last-chance disk space threshold in MiB.
+
+      audit_admin_space_left_action:
+        type: str
+        required: false
+        default: suspend
+        choices:
+          - ignore
+          - syslog
+          - suspend
+          - rotate
+          - email
+          - exec
+          - single
+          - halt
+        description:
+          - Action when the audit filesystem reaches the admin threshold.
+
+      audit_disk_full_action:
+        type: str
+        required: false
+        default: suspend
+        choices:
+          - ignore
+          - syslog
+          - suspend
+          - rotate
+          - exec
+          - single
+          - halt
+        description:
+          - Action when the audit filesystem becomes full.
+
+      audit_disk_error_action:
+        type: str
+        required: false
+        default: suspend
+        choices:
+          - ignore
+          - syslog
+          - suspend
+          - exec
+          - single
+          - halt
+        description:
+          - Action when an audit log disk write or rotate error occurs.
+
+      audit_tcp_listen_port:
+        type: int
+        required: false
+        description:
+          - TCP port used to receive remote audit events.
+
+      audit_tcp_listen_queue:
+        type: int
+        required: false
+        description:
+          - Backlog of pending TCP audit connections.
+
+      audit_tcp_max_per_addr:
+        type: int
+        required: false
+        description:
+          - Maximum concurrent remote audit connections per source IP.
+
+      audit_use_libwrap:
+        type: bool
+        required: false
+        description:
+          - Whether to use tcp_wrappers for remote audit connections.
+
+      audit_tcp_client_ports:
+        type: str
+        required: false
+        description:
+          - Allowed client source ports for incoming audit connections.
+
+      audit_tcp_client_max_idle:
+        type: int
+        required: false
+        description:
+          - Maximum idle time for remote audit clients in seconds.
+
+      audit_transport:
+        type: str
+        required: false
+        default: tcp
+        choices:
+          - tcp
+          - krb5
+        description:
+          - Transport used for remote audit communication.
+
+      audit_krb5_principal:
+        type: str
+        required: false
+        description:
+          - Kerberos principal name for auditd.
+
+      audit_krb5_key_file:
+        type: str
+        required: false
+        description:
+          - Path to the Kerberos key file.
+
+      audit_distribute_network:
+        type: bool
+        required: false
+        description:
+          - Whether network-originated events are sent to audispd.
+
+      audit_q_depth:
+        type: int
+        required: false
+        description:
+          - Internal audisp queue depth.
+
+      audit_overflow_action:
+        type: str
+        required: false
+        choices:
+          - ignore
+          - syslog
+          - suspend
+          - exec
+          - single
+          - halt
+        description:
+          - Action when audit event dispatcher queue overflows.
+
+      audit_max_restarts:
+        type: int
+        required: false
+        description:
+          - Number of times audispd may restart a crashed plugin.
+
+      audit_plugin_dir:
+        type: str
+        required: false
+        description:
+          - Directory containing audit plugin configuration files.
+
+      force_overwrite_audit:
+        type: bool
+        required: false
+        default: true
+        description:
+          - Whether to overwrite rule files when content differs.
+
+      audit_sudo_log:
+        type: str
+        required: false
+        description:
+          - Path to the sudo log file used by sudo-related audit rules.
+
+      audit_rules_files:
+        type: list
+        required: false
+        elements: str
+        default: []
+        description:
+          - List of audit rule template files to deploy to rules.d.

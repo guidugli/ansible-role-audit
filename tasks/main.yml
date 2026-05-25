@@ -1,13 +1,54 @@
 ---
-# tasks file for audit
+# tasks/main.yml
+# Purpose:
+#   Validate inputs, then configure auditd and audit rules.
 
-- name: Execute role tasks
-  block:
+- name: Validate role inputs with argument_specs
+  ansible.builtin.validate_argument_spec:
+    argument_spec: "{{ (lookup('ansible.builtin.file', role_path ~ '/meta/argument_specs.yml') | from_yaml).argument_specs.main.options }}"
+    provided_arguments:
+      audit_local_events: "{{ audit_local_events | default(omit) }}"
+      audit_skip_grub_check: "{{ audit_skip_grub_check | default(omit) }}"
+      audit_log_file: "{{ audit_log_file | default(omit) }}"
+      audit_write_logs: "{{ audit_write_logs | default(omit) }}"
+      audit_log_format: "{{ audit_log_format | default(omit) }}"
+      audit_log_group: "{{ audit_log_group | default(omit) }}"
+      audit_priority_boost: "{{ audit_priority_boost | default(omit) }}"
+      audit_flush: "{{ audit_flush | default(omit) }}"
+      audit_freq: "{{ audit_freq | default(omit) }}"
+      audit_num_logs: "{{ audit_num_logs | default(omit) }}"
+      audit_name_format: "{{ audit_name_format | default(omit) }}"
+      audit_name: "{{ audit_name | default(omit) }}"
+      audit_max_log_file: "{{ audit_max_log_file | default(omit) }}"
+      audit_max_log_file_action: "{{ audit_max_log_file_action | default(omit) }}"
+      audit_verify_email: "{{ audit_verify_email | default(omit) }}"
+      audit_action_mail_acct: "{{ audit_action_mail_acct | default(omit) }}"
+      audit_space_left: "{{ audit_space_left | default(omit) }}"
+      audit_space_left_action: "{{ audit_space_left_action | default(omit) }}"
+      audit_admin_space_left: "{{ audit_admin_space_left | default(omit) }}"
+      audit_admin_space_left_action: "{{ audit_admin_space_left_action | default(omit) }}"
+      audit_disk_full_action: "{{ audit_disk_full_action | default(omit) }}"
+      audit_disk_error_action: "{{ audit_disk_error_action | default(omit) }}"
+      audit_tcp_listen_port: "{{ audit_tcp_listen_port | default(omit) }}"
+      audit_tcp_listen_queue: "{{ audit_tcp_listen_queue | default(omit) }}"
+      audit_tcp_max_per_addr: "{{ audit_tcp_max_per_addr | default(omit) }}"
+      audit_use_libwrap: "{{ audit_use_libwrap | default(omit) }}"
+      audit_tcp_client_ports: "{{ audit_tcp_client_ports | default(omit) }}"
+      audit_tcp_client_max_idle: "{{ audit_tcp_client_max_idle | default(omit) }}"
+      audit_transport: "{{ audit_transport | default(omit) }}"
+      audit_krb5_principal: "{{ audit_krb5_principal | default(omit) }}"
+      audit_krb5_key_file: "{{ audit_krb5_key_file | default(omit) }}"
+      audit_distribute_network: "{{ audit_distribute_network | default(omit) }}"
+      audit_q_depth: "{{ audit_q_depth | default(omit) }}"
+      audit_overflow_action: "{{ audit_overflow_action | default(omit) }}"
+      audit_max_restarts: "{{ audit_max_restarts | default(omit) }}"
+      audit_plugin_dir: "{{ audit_plugin_dir | default(omit) }}"
+      force_overwrite_audit: "{{ force_overwrite_audit | default(omit) }}"
+      audit_sudo_log: "{{ audit_sudo_log | default(omit) }}"
+      audit_rules_files: "{{ audit_rules_files | default(omit) }}"
 
-    - name: Include assert.yml
-      ansible.builtin.include_tasks: assert.yml
-    
-    - name: Include audit.yml
-      ansible.builtin.include_tasks: audit.yml
+- name: Run extra assertion checks
+  ansible.builtin.import_tasks: assert.yml
 
-  become: yes
+- name: Import audit tasks
+  ansible.builtin.import_tasks: audit.yml

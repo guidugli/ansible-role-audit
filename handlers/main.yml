@@ -1,26 +1,39 @@
 ---
-# handlers file for audit
+# handlers/main.yml
+# Purpose:
+#   Regenerate audit rules and reload auditd when configuration changes.
 
-- name: "Check if {{ audit_rulesd_path }}/audit.rules exists"
-  become: yes
-  ansible.builtin.command: "test -e {{ audit_rulesd_path }}/audit.rules"
+- name: Check if {{ audit_rulesd_path }}/audit.rules exists
+  ansible.builtin.command:
+    argv:
+      - test
+      - -e
+      - "{{ audit_rulesd_path }}/audit.rules"
   register: audit_cmd_result
   changed_when: false
   failed_when: false
-  listen: "reload auditd"
+  listen: reload auditd
 
-- name: "Rename {{ audit_rulesd_path }}/audit.rules"
-  become: yes
-  ansible.builtin.command: "mv -f {{ audit_rulesd_path }}/audit.rules {{ audit_rulesd_path }}/audit.rules.old"
+- name: Rename {{ audit_rulesd_path }}/audit.rules
+  ansible.builtin.command:
+    argv:
+      - mv
+      - -f
+      - "{{ audit_rulesd_path }}/audit.rules"
+      - "{{ audit_rulesd_path }}/audit.rules.old"
   register: audit_cmd_result
   changed_when: true
   when: audit_cmd_result.rc == 0
-  listen: "reload auditd"
+  listen: reload auditd
 
 - name: Generate rules and reload auditd
-  become: yes
-  ansible.builtin.command: "augenrules --load"
+  ansible.builtin.command:
+    argv:
+      - augenrules
+      - --load
   register: audit_cmd_result
-  changed_when: not(audit_cmd_result.stdout is search('No change'))
-  when: ansible_virtualization_type not in _container_types
-  listen: "reload auditd"
+  changed_when: not (audit_cmd_result.stdout is search('No change'))
+  when:
+    - ansible_facts.get('virtualization_type', '') not in _container_types
+    - ansible_connection not in _container_types
+  listen: reload auditd

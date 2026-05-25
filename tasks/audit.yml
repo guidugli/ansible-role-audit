@@ -1,85 +1,97 @@
 ---
-# tasks file for audit
+# tasks/audit.yml
+# Purpose:
+#   Install and configure auditd and rule files.
+#
+# Normalized version:
+# - enum-like values are written in lowercase consistently
+# - apt cache refresh is Debian-family only
+# - top-level fact deprecation is avoided via ansible_facts.get(...)
+
+- name: Refresh apt cache on Debian-family systems
+  ansible.builtin.apt:
+    update_cache: true
+  when:
+    - ansible_facts.get('os_family', '') == 'Debian'
 
 - name: Install audit packages
   ansible.builtin.package:
     name: "{{ audit_packages }}"
     state: present
-    update_cache: true
 
-- name: Enable auditd service
-  ansible.builtin.service:
+- name: Enable and start auditd service
+  ansible.builtin.systemd_service:
     name: auditd
     enabled: true
     state: started
   when:
-    - ansible_virtualization_type not in _container_types
+    - ansible_facts.get('virtualization_type', '') not in _container_types
     - ansible_connection not in _container_types
 
-
-# Now determine if the line have already audit=1
-- name: Check if audit=1 is present
+- name: Check whether GRUB has audit=1 configured
   ansible.builtin.lineinfile:
     path: /etc/default/grub
     regexp: '^\s*GRUB_CMDLINE_LINUX.*audit=1'
     state: absent
   check_mode: true
   changed_when: false
-  register: audit_exist
+  register: audit_cmdline_audit1
   when:
     - not audit_skip_grub_check
-    - ansible_virtualization_type not in _container_types
+    - ansible_facts.get('virtualization_type', '') not in _container_types
     - ansible_connection not in _container_types
 
-- name: Error message
+- name: Fail when GRUB does not contain audit=1
   ansible.builtin.fail:
-    msg: ">>>> ERROR: Use grub role to add audit=1 option into cmdline <<<<"
+    msg: '>>>> ERROR: Use grub role to add audit=1 option into cmdline <<<<'
   when:
-    - ansible_virtualization_type not in _container_types
+    - not audit_skip_grub_check
+    - ansible_facts.get('virtualization_type', '') not in _container_types
     - ansible_connection not in _container_types
-    - not audit_exist.found
+    - not audit_cmdline_audit1.found
 
-# Now determine if the line have already audit_backlog_limit
-- name: Check if audit_backlog_limit is present
+- name: Check whether GRUB has audit_backlog_limit configured
   ansible.builtin.lineinfile:
     path: /etc/default/grub
     regexp: '^\s*GRUB_CMDLINE_LINUX.*audit_backlog_limit=.+'
     state: absent
   check_mode: true
   changed_when: false
-  register: audit_exist
+  register: audit_cmdline_backlog
   when:
-    - ansible_virtualization_type not in _container_types
+    - not audit_skip_grub_check
+    - ansible_facts.get('virtualization_type', '') not in _container_types
     - ansible_connection not in _container_types
 
-- name: Error message
+- name: Fail when GRUB does not contain audit_backlog_limit
   ansible.builtin.fail:
-    msg: ">>>> ERROR: Use grub role to add audit_backlog_limit option into cmdline <<<<"
+    msg: '>>>> ERROR: Use grub role to add audit_backlog_limit option into cmdline <<<<'
   when:
-    - ansible_virtualization_type not in _container_types
+    - not audit_skip_grub_check
+    - ansible_facts.get('virtualization_type', '') not in _container_types
     - ansible_connection not in _container_types
-    - not audit_exist.found
+    - not audit_cmdline_backlog.found
 
-- name: Get min_uid for the system
-  ansible.builtin.shell: |
-    set -o pipefail
-    grep -E "^UID_MIN\s" /etc/login.defs | awk '{ print $2 }'
-  args:
-    executable: /bin/bash
+- name: Read UID_MIN from /etc/login.defs
+  ansible.builtin.command:
+    argv:
+      - awk
+      - '/^UID_MIN[[:space:]]+/ { print $2; exit }'
+      - /etc/login.defs
   register: audit_uid_min_cmd
   changed_when: false
 
-- name: Set audit_uid_min variable with the result of last task
+- name: Set audit_uid_min variable
   ansible.builtin.set_fact:
-    audit_uid_min: "{{ audit_uid_min_cmd.stdout | default(1000, true) }}"
+    audit_uid_min: "{{ audit_uid_min_cmd.stdout | default('1000', true) | trim }}"
 
-- name: "Apply audit configuration settings (true/false values)"
+- name: Apply boolean auditd configuration settings
   ansible.builtin.lineinfile:
     path: "{{ audit_config_path }}"
-    regexp: "^{{ _audit_vars[item] }}[ ]+=.*"
-    line: "{{ _audit_vars[item] }} = {{ 'yes' if lookup('vars', item) else 'no' }}"
+    regexp: '^{{ _audit_vars[item] }}\s*=.*$'
+    line: "{{ _audit_vars[item] }} = {{ (lookup('vars', item) | bool) | ternary('yes', 'no') }}"
     mode: '0644'
-  when: lookup('vars', item, default='undefined') != 'undefined'
+  when: lookup('vars', item, default=omit) is not sameas omit
   loop:
     - audit_local_events
     - audit_write_logs
@@ -88,13 +100,27 @@
     - audit_distribute_network
   notify: reload auditd
 
-- name: Apply audit configuration settings
+- name: Apply normalized auditd configuration settings
+  vars:
+    audit_lowercase_option_vars:
+      - audit_log_format
+      - audit_flush
+      - audit_name_format
+      - audit_max_log_file_action
+      - audit_space_left_action
+      - audit_admin_space_left_action
+      - audit_disk_full_action
+      - audit_disk_error_action
+      - audit_transport
+      - audit_overflow_action
   ansible.builtin.lineinfile:
     path: "{{ audit_config_path }}"
-    regexp: "^{{ _audit_vars[item] }}[ ]+=.*"
-    line: "{{ _audit_vars[item] }} = {{ lookup('vars', item) }}"
+    regexp: '^{{ _audit_vars[item] }}\s*=.*$'
+    line: >-
+      {{ _audit_vars[item] }} =
+      {{ ((lookup('vars', item) | string) | lower) if item in audit_lowercase_option_vars else lookup('vars', item) }}
     mode: '0644'
-  when: lookup('vars', item, default='undefined') != 'undefined'
+  when: lookup('vars', item, default=omit) is not sameas omit
   loop:
     - audit_log_file
     - audit_log_format
@@ -128,37 +154,45 @@
   notify: reload auditd
 
 - name: Find privileged commands
-  ansible.builtin.shell: |
-    set -o pipefail
-    find / -xdev \( -perm -4000 -o -perm -2000 \) -type f | awk '{print $1}'
+  ansible.builtin.command:
+    argv:
+      - find
+      - /
+      - -xdev
+      - '('
+      - -perm
+      - -4000
+      - -o
+      - -perm
+      - -2000
+      - ')'
+      - -type
+      - f
+      - -print
+  register: audit_privileged_commands_cmd
   changed_when: false
-  register: audit_aux_cmd
-  args:
-    executable: /bin/bash
 
-- name: Set variable audit_priv_command
+- name: Set privileged command list
   ansible.builtin.set_fact:
-    audit_priv_command: "{{ audit_aux_cmd.stdout_lines | default([]) }}"
+    audit_priv_command: "{{ audit_privileged_commands_cmd.stdout_lines | default([]) }}"
 
-- name: Ensure audit rules are configured properly
+- name: Deploy selected audit rule templates
   ansible.builtin.template:
-    dest: "{{ audit_rulesd_path }}/{{ item }}"
     src: "{{ item }}"
+    dest: "{{ audit_rulesd_path }}/{{ item }}"
     owner: root
     group: root
-    mode: 0600
+    mode: '0600'
     force: "{{ force_overwrite_audit | default(false) }}"
-  notify: reload auditd
   loop: "{{ audit_rules_files | default([]) }}"
+  notify: reload auditd
 
 - name: Ensure audit configuration is immutable
   ansible.builtin.copy:
     dest: "{{ audit_rulesd_path }}/99-finalize.rules"
     content: |
-
       -e 2
-
     owner: root
     group: root
-    mode: 0600
+    mode: '0600'
   notify: reload auditd

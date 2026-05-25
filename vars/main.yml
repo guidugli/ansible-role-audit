@@ -8,8 +8,14 @@ _audit_packages:
   CentOS: ['audit', 'audit-libs']
   Fedora: ['audit', 'audit-libs']
 
-audit_packages: "{{ _audit_packages[ansible_distribution ~ '-' ~ ansible_distribution_major_version] |
-              default(_audit_packages[ansible_distribution]) | default(_audit_packages['default']) }}"
+audit_packages: >-
+  {{
+    _audit_packages[
+      ansible_facts.get('distribution', '') ~ '-' ~ ansible_facts.get('distribution_major_version', '')
+    ]
+    | default(_audit_packages[ansible_facts.get('distribution', '')], true)
+    | default(_audit_packages['default'])
+  }}
 
 audit_config_path: /etc/audit/auditd.conf
 audit_rulesd_path: /etc/audit/rules.d

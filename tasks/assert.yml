@@ -1,111 +1,66 @@
 ---
+# tasks/assert.yml
+# Extra validation not fully covered by meta/argument_specs.yml.
 
-- name: Check if these 'true','false' values are invalid
+- name: Ensure audit_sudo_log is a non-empty string
   ansible.builtin.assert:
     quiet: true
     that:
-      - (lookup('vars', item) | lower) in ['true','false']
-    msg: "Invalid value for {{ item }}. Allowed values are 'true', 'false'."
-  when: lookup('vars', item, default='undefined') != 'undefined'
-  loop:
-    - audit_local_events
-    - audit_write_logs
-    - audit_verify_email
-    - audit_use_libwrap
-    - audit_distribute_network
-    - force_overwrite_audit
-
-- name: Check integer values
-  ansible.builtin.assert:
-    quiet: true
-    that:
-      - (lookup('vars', item) | int(-1)) >= 0
-    msg: "Invalid integer value for {{ item }}"
-  when: lookup('vars', item, default='undefined') != 'undefined'
-  loop:
-    - audit_priority_boost
-    - audit_freq
-    - audit_num_logs
-    - audit_max_log_file
-    - audit_admin_space_left
-    - audit_tcp_listen_port
-    - audit_tcp_listen_queue
-    - audit_tcp_max_per_addr
-    - audit_tcp_client_max_idle
-    - audit_q_depth
-    - audit_max_restarts
-
-- name: Check audit_log_format
-  ansible.builtin.assert:
-    that:
-      - (audit_log_format | lower) in ['enriched', 'raw']
-  when: audit_log_format is defined
-
-- name: Check audit_flush
-  ansible.builtin.assert:
-    that:
-      - (audit_flush | lower) in ['none', 'incremental', 'incremental_async', 'data', 'sync']
-  when: audit_flush is defined
-
-- name: Check audit_name_format
-  ansible.builtin.assert:
-    that:
-      - (audit_name_format | lower) in ['none', 'hostname', 'fqd', 'numeric', 'user']
-  when: audit_name_format is defined
-
-- name: Check audit_max_log_file_action
-  ansible.builtin.assert:
-    that:
-      - (audit_max_log_file_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate', 'keep_logs']
-  when: audit_max_log_file_action is defined
-
-- name: Check audit_space_left_action
-  ansible.builtin.assert:
-    that:
-      - (audit_space_left_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate',
-                                              'email', 'exec', 'single', 'halt']
-  when: audit_space_left_action is defined
-
-- name: Check audit_admin_space_left_action
-  ansible.builtin.assert:
-    that:
-      - (audit_admin_space_left_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate',
-                                                    'email', 'exec', 'single', 'halt']
-  when: audit_admin_space_left_action is defined
-
-- name: Check audit_disk_full_action
-  ansible.builtin.assert:
-    that:
-      - (audit_disk_full_action | lower) in ['ignore', 'syslog', 'suspend', 'rotate', 'exec', 'single', 'halt']
-  when: audit_disk_full_action is defined
-
-- name: Check audit_disk_error_action
-  ansible.builtin.assert:
-    that:
-      - (audit_disk_error_action | lower) in ['ignore', 'syslog', 'suspend', 'exec', 'single', 'halt']
-  when: audit_disk_error_action is defined
-
-- name: Check audit_overflow_action
-  ansible.builtin.assert:
-    that:
-      - (audit_overflow_action | lower) in ['ignore', 'syslog', 'suspend', 'exec', 'single', 'halt']
-  when: audit_overflow_action is defined
-
-- name: Check audit_transport
-  ansible.builtin.assert:
-    that:
-      - (audit_transport | lower) in ['tcp', 'krb5']
-  when: audit_transport is defined
-
-- name: Validate audit_sudo_log
-  ansible.builtin.assert:
-    that:
-      - audit_sudo_log is defined
       - audit_sudo_log is string
       - audit_sudo_log | length > 0
+    fail_msg: >-
+      audit_sudo_log must be a non-empty string.
 
-- name: Validate audit_rules_files
+- name: Ensure audit_flush/freq combination is valid
   ansible.builtin.assert:
+    quiet: true
     that:
-      - audit_rules_files is sequence
-  when: audit_rules_files is defined
+      - audit_freq is defined
+      - audit_freq | int >= 0
+    fail_msg: >-
+      audit_freq must be defined and non-negative when audit_flush is INCREMENTAL or INCREMENTAL_ASYNC.
+  when:
+    - audit_flush is defined
+    - audit_flush | upper in ['INCREMENTAL', 'INCREMENTAL_ASYNC']
+
+- name: Ensure audit_name is provided when audit_name_format is USER
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - audit_name is defined
+      - audit_name is string
+      - audit_name | length > 0
+    fail_msg: >-
+      audit_name must be defined and non-empty when audit_name_format is USER.
+  when:
+    - audit_name_format is defined
+    - audit_name_format | upper == 'USER'
+
+- name: Ensure Kerberos settings are provided when transport is KRB5
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - audit_krb5_principal is defined
+      - audit_krb5_principal is string
+      - audit_krb5_principal | length > 0
+      - audit_krb5_key_file is defined
+      - audit_krb5_key_file is string
+      - audit_krb5_key_file | length > 0
+    fail_msg: >-
+      audit_krb5_principal and audit_krb5_key_file must be defined when audit_transport is KRB5.
+  when:
+    - audit_transport is defined
+    - audit_transport | upper == 'KRB5'
+
+- name: Validate audit_rules_files entries are strings
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - item is string
+      - item | length > 0
+    fail_msg: >-
+      Each entry in audit_rules_files must be a non-empty string. Invalid entry: {{ item }}
+  loop: "{{ audit_rules_files | default([]) }}"
+  when:
+    - audit_rules_files is defined
+    - audit_rules_files | length > 0

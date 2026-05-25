@@ -1,0 +1,131 @@
+---
+- name: Verify audit role
+  hosts: all
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: Locate auditctl binary
+      ansible.builtin.command:
+        argv:
+          - sh
+          - -c
+          - command -v auditctl
+      register: auditctl_path
+      changed_when: false
+      failed_when: false
+
+    - name: Assert auditctl binary is installed
+      ansible.builtin.assert:
+        that:
+          - auditctl_path.rc == 0
+          - auditctl_path.stdout | trim | length > 0
+        fail_msg: >-
+          auditctl binary is not available. Ensure the audit package was installed correctly.
+        quiet: true
+
+    - name: Stat auditd configuration file
+      ansible.builtin.stat:
+        path: /etc/audit/auditd.conf
+      register: auditd_conf_stat
+
+    - name: Assert auditd configuration file exists
+      ansible.builtin.assert:
+        that:
+          - auditd_conf_stat.stat.exists
+          - auditd_conf_stat.stat.pw_name == 'root'
+          - auditd_conf_stat.stat.gr_name == 'root'
+        fail_msg: >-
+          /etc/audit/auditd.conf must exist and be owned by root.
+        quiet: true
+
+    - name: Stat audit rules directory
+      ansible.builtin.stat:
+        path: /etc/audit/rules.d
+      register: audit_rulesd_stat
+
+    - name: Assert audit rules directory exists
+      ansible.builtin.assert:
+        that:
+          - audit_rulesd_stat.stat.exists
+          - audit_rulesd_stat.stat.isdir
+        fail_msg: >-
+          /etc/audit/rules.d must exist.
+        quiet: true
+
+    - name: Stat immutable finalize rule
+      ansible.builtin.stat:
+        path: /etc/audit/rules.d/99-finalize.rules
+      register: audit_finalize_rule_stat
+
+    - name: Assert immutable finalize rule exists with secure mode
+      ansible.builtin.assert:
+        that:
+          - audit_finalize_rule_stat.stat.exists
+          - audit_finalize_rule_stat.stat.pw_name == 'root'
+          - audit_finalize_rule_stat.stat.gr_name == 'root'
+          - audit_finalize_rule_stat.stat.mode == '0600'
+        fail_msg: >-
+          /etc/audit/rules.d/99-finalize.rules must exist with owner root:root and mode 0600.
+        quiet: true
+
+    - name: Verify immutable finalize rule content
+      ansible.builtin.command: grep -Fx -- '-e 2' /etc/audit/rules.d/99-finalize.rules
+      register: audit_finalize_rule_content
+      changed_when: false
+
+    - name: Assert immutable finalize rule content is correct
+      ansible.builtin.assert:
+        that:
+          - audit_finalize_rule_content.rc == 0
+        fail_msg: >-
+          /etc/audit/rules.d/99-finalize.rules must contain '-e 2'.
+        quiet: true
+
+    - name: Check selected deployed rule files
+      ansible.builtin.stat:
+        path: "/etc/audit/rules.d/{{ item }}"
+      loop: "{{ audit_rules_files | default([]) }}"
+      register: audit_rule_file_stats
+
+    - name: Assert selected audit rule files exist with secure mode
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.pw_name == 'root'
+          - item.stat.gr_name == 'root'
+          - item.stat.mode == '0600'
+        fail_msg: >-
+          Audit rule file {{ item.item }} must exist with owner root:root and mode 0600.
+        quiet: true
+      loop: "{{ audit_rule_file_stats.results | default([]) }}"
+      when:
+        - audit_rules_files is defined
+        - audit_rules_files | length > 0
+
+    - name: Check auditd daemon state on non-container hosts
+      ansible.builtin.command: systemctl is-active auditd
+      register: auditd_active
+      changed_when: false
+      failed_when: false
+      when:
+        - ansible_service_mgr is defined
+        - ansible_virtualization_type is not defined or ansible_virtualization_type not in ['docker', 'podman', 'lxc', 'containerd', 'container']
+
+    - name: Assert auditd daemon is active on non-container hosts
+      ansible.builtin.assert:
+        that:
+          - auditd_active.rc == 0
+          - auditd_active.stdout | trim == 'active'
+        fail_msg: >-
+          auditd should be active on non-container hosts.
+        quiet: true
+      when:
+        - auditd_active is defined
+        - auditd_active.skipped is not defined or not auditd_active.skipped
+
+    - name: Validate audit rules syntax
+      ansible.builtin.command: augenrules --check
+      register: audit_rules_check
+      changed_when: false
+      failed_when: audit_rules_check.rc != 0
