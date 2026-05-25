@@ -1,256 +1,620 @@
-Ansible Role: audit
-=========
+# Ansible Role: `audit`
 
-An Ansible Role that install and configure auditing on RHEL/CentOS, Fedora and Debian/Ubuntu. 
+Install and configure Linux auditing with `auditd`, deploy reusable audit rules, and validate the resulting configuration across modern Debian, Ubuntu LTS, and Fedora releases.
 
-Default rules are based on CIS RedHat/Ubuntu/Debian benchmark and also on this github repository https://github.com/Neo23x0/auditd[https://github.com/Neo23x0/auditd]
+This role is designed to be:
+- **multi-distro compatible**
+- **security-focused**
+- **container-aware** for Molecule testing
+- **modular**, so individual audit rule files can be selected as needed
 
-Disclaimer: I am no security expert and by no means you should use this role without first learning how audit works and the rules configured by this role. The security of your servers is YOUR responsibility!
+---
 
-Requirements
-------------
-
-Operating system running on bare metal or on a hypervisor virtualization. On conteinerized systems, only one auditd process is able to run, usually on the host system. This role will not attempt to start auditd daemon on containers.
-
-Role Variables
---------------
-
-**Available variables are listed below, along with default values (see `defaults/main.yml`):**
-
-    audit_local_events: true
-
-This yes/no keyword specifies whether or not to include local events. Normally you want local events so the default value is yes. Cases where you would set this to no is when you want to aggregate events only from the network.
-
-    audit_skip_grub_check: false
-
-Check if grub configuration has the parameter audit=1. If not, the role will fail. If this variable is set to true, it will skip this verification.
-
-    #audit_log_file: /var/log/audit/audit.log
-
-This keyword specifies the full path name to the log file where audit records will be stored. It must be a regular file.
-
-    audit_write_logs: true
-
-This yes/no keyword determines whether or not to write logs to the disk.  Normally you want this so the default is true.
-
-    audit_log_format: ENRICHED
-
-The log format describes how the information should be stored on disk. There are 2 options: raw and enriched.
-
-    audit_log_group: root
-
-This keyword specifies the group that is applied to the log file's permissions. The default is root. The group name can be either numeric or spelled out.
-
-    audit_priority_boost: 4
-
-This is a non-negative number that tells the audit daemon how much of a priority boost it should take. The default is 4. No change is 0.
-
-    audit_flush: INCREMENTAL_ASYNC
-
-Valid values are none, incremental, incremental_async, data,  and sync.
-
-    audit_freq: 50
-
-This is a non-negative number that tells the audit daemon how many records to write before issuing an explicit flush to disk command. This value is only valid when the flush keyword is set to incremental or incremental_async.
-
-    audit_num_logs: 5
-
-This keyword specifies the number of log files to keep if rotate is given as the max_log_file_action.  If the number is < 2, logs are not rotated. This number must be 999 or less.
-
-    audit_name_format: NONE
-
-This option controls how computer node names are inserted into the audit event stream. It has the following choices: none, hostname, fqd, numeric, and user.  None means that no computer name is inserted into the audit event.
-
-    #audit_name: mydomain
-
-This is the admin defined string that identifies the machine if user is given as the name_format option.
-
-    audit_max_log_file: 256
-
-This keyword specifies the maximum file size in megabytes. When this limit is reached, it will trigger a configurable action.
-
-    audit_max_log_file_action: keep_logs
-
-This parameter tells the system what action to take when the system has detected that the max file size limit has been reached. Valid values are ignore, syslog, suspend, rotate and keep_logs.
-
-    audit_verify_email: true
-
-This option determines if the email address given in action_mail_acct is checked to see if the domain name can be resolved. This option must be given before action_mail_acct or the default value of yes will be used.
-
-    audit_action_mail_acct: root
-
-This option should contain a valid email address or alias. The default address is root. If the email address is not local to the machine, you must make sure you have email properly configured on your machine and network. Also, this option requires that /usr/lib/sendmail exists on the machine.
-
-    audit_space_left: 75
-
-If the free space in the filesystem containing log_file drops below this value, the audit daemon takes the action specified by space_left_action.  If the value of space_left is specified as a whole number, it is interpreted as an absolute size in megabytes (MiB).  If the value is specified as a number between 1 and 99 followed by a percentage sign (e.g., 5%), the audit daemon calculates the absolute size in megabytes based on the size of the filesystem containing log_file.
-
-    audit_space_left_action: email
-
-This parameter tells the system what action to take when the system has detected that it is starting to get low on disk space.  Valid values are ignore, syslog, rotate, email, exec, suspend, single, and halt.
-
-    audit_admin_space_left: 50
-
-This is a numeric value in megabytes that tells the audit daemon when to perform a configurable action because the system is running low on disk space. This should be considered the last chance to do something before running out of disk space.
-
-    audit_admin_space_left_action: suspend
-
-This parameter tells the system what action to take when the system has detected that it is low on disk space. Valid values are ignore, syslog, rotate, email, exec, suspend, single, and halt.
-
-    audit_disk_full_action: SUSPEND
-
-This parameter tells the system what action to take when the system has detected that the partition to which log files are written has become full. Valid values are ignore, syslog, rotate, exec, suspend, single, and halt.
-
-    audit_disk_error_action: SUSPEND
-
-This parameter tells the system what action to take whenever there is an error detected when writing audit events to disk or rotating logs. Valid values are ignore, syslog, exec, suspend, single, and halt.
-
-    #audit_tcp_listen_port: 60
-
-This is a numeric value in the range 1..65535 which, if specified, causes auditd to listen on the corresponding TCP port for audit records from remote systems. The audit daemon may be linked with tcp_wrappers. You may want to control access with an entry in the hosts.allow and deny files. If this is deployed on a systemd based OS, then you may need to adjust the 'After' directive.
-
-    #audit_tcp_listen_queue: 5
-
-This is a numeric value which indicates how many pending (requested but unaccepted) connections are allowed.  The default is 5.  Setting this too small may cause connections to be rejected if too many hosts start up at exactly the same time, such as after a power failure. This setting is only used for aggregating servers. Clients logging to a remote server should keep this commented out.
-
-    #audit_tcp_max_per_addr: 1
-
-This is a numeric value which indicates how many concurrent connections from one IP address is allowed. The default is 1 and the maximum is 1024. Setting this too large may allow for a Denial of Service attack on the logging server.
-
-    audit_use_libwrap: true
-
-This setting determines whether or not to use tcp_wrappers to discern connection attempts that are from allowed machines.
-
-    #audit_tcp_client_ports: 1024-65535
-
-This parameter may be a single numeric value or two values separated by a dash (no spaces allowed).  It indicates which client ports are allowed for incoming connections. If not specified, any port is allowed. 
-
-    audit_tcp_client_max_idle: 0
-
-This parameter indicates the number of seconds that a client may be idle (i.e. no data from them at all) before auditd complains. This is used to close inactive connections if the client machine has a problem where it cannot shutdown the connection cleanly. Note that this is a global setting, and must be higher than any individual client heartbeat_timeout setting, preferably by a factor of two.  The default is zero, which disables this check.
-
-    audit_transport: TCP
-
-If set to TCP, only clear text tcp connections will be used. If set to KRB5, then Kerberos 5 will be used for authentication and encryption.
-
-    audit_krb5_principal: auditd
-
-This is the principal for this server.  The default is "auditd".  Given this default, the server will look for a key named like auditd/hostname@EXAMPLE.COM stored in /etc/audit/audit.key to authenticate itself, where hostname is the canonical name for the server's host, as returned by a DNS lookup of its IP address.
-
-    #audit_krb5_key_file: /etc/audit/audit.key
-
-Location of the key for this client's principal.  Note that the key file must be owned by root and mode 0400.
-
-    audit_distribute_network: false
-
-If set to true, network originating events will be distributed to the audit dispatcher for processing.
-
-    audit_q_depth: 400
-
-This is a numeric value that tells how big to make the internal queue of the audit event dispatcher. A bigger queue lets it handle a flood of events better, but could hold events that are not processed when the daemon is terminated. If you get messages in syslog about events getting dropped, increase this value.
-
-    audit_overflow_action: SYSLOG
-
-This option determines how the daemon should react to overflowing its internal queue. When this happens, it means that more events are being received than it can pass along to child processes. This error means that it is going to lose the current event that it's trying to dispatch. This option has the following choices: ignore, syslog, suspend, single, and halt.
-
-    audit_max_restarts: 10
-
-This is a non-negative number that tells the audit event dispatcher how many times it can try to restart a crashed plugin.
-
-    audit_plugin_dir: /etc/audit/plugins.d
-
-This is the location that auditd will use to search for its plugin configuration files.
-
-    force_overwrite_audit: true
-
-If audit file already exists, force overwrite? It will overwrite only if target file contents are different from source.
-
-    audit_sudo_log: "{{ sudo_log | default('/var/log/sudo.log') }}"
-
-If sudo role is defined, get value from sudo_log variable otherwise use default: /var/log/sudo.log
-This is to prevent users from having to specify the same information multiple times. But sudo role is not a dependency for this role.
-
-**The variables listed below do not need to be changed for targeted systems (see vars/main.yml):**
-
-    audit_packages: ['audit', 'audit-libs']
-
-This variable is defined in vars/main.yml and it is set according to the Linux distribution. Users don't need to change this variable for the target systems of this role.
-
-    audit_config_path: /etc/audit/auditd.conf
-
-This variable is defined in vars/main.yml and controls where the auditd.conf file is located.
-
-    audit_rulesd_path: /etc/audit/rules.d
-
-This variable is defined in vars/main.yml and controls where the rules.d directory is located.
-
-    audit_rules_files:
-      - 01-init.rules
-      - 10-self-audit.rules
-      - 20-filters.rules
-      - 30-kernel.rules
-      - 40-identity.rules
-      - 40-login.rules
-      - 40-mount.rules
-      - 40-stunnel.rules
-      - 40-swap.rules
-      - 40-time.rules
-      - 50-cron.rules
-      - 50-dac.rules
-      - 50-hostname.rules
-      - 50-ip-connections.rules
-      - 50-network.rules
-      - 50-pkg-manager.rules
-      - 50-remote-shell.rules
-      - 50-sudoers.rules
-      - 50-system-libs.rules
-      - 50-system-startup.rules
-      - 55-privileged.rules
-      - 60-mail.rules
-      - 60-pam.rules
-      - 60-sshd.rules
-      - 60-systemd.rules
-      - 70-access.rules
-      - 70-mac-policy.rules
-      - 70-power-state.rules
-      - 70-sessions.rules
-      - 70-shell-profiles.rules
-      - 80-data-compression.rules
-      - 80-network.rules
-      - 80-privilege-abuse.rules
-      - 80-reconnaissance.rules
-      - 80-socket-creation.rules
-      - 80-suspicious.rules
-      - 80-suspicious-shells.rules
-      - 80-virtualization.rules
-      - 90-cred-in-files.rules
-      - 90-IPC.rules
-      - 90-root-exec.rules
-      - 90-special-sw.rules
-      - 95-32bit-api-exploitation.rules
-
-Specify the rules' files to be copied. By default, no file is selected to be copied. The files listed above are provided by the role, but user can create their own files as needed. The role provides the rules separated in several small files (instead of a big one), to promote re-usability: you can select wich rules to implement, and you can create your own custom rules. The rules are based on CIS and other security standards.
-
-Dependencies
-------------
-
-No dependencies.
-
-Example Playbook
-----------------
-
-    - hosts: servers
-      vars_files:
-        - vars/main.yml
-      roles:
-         - { role: guidugli.audit }
-      
-License
--------
-
-MIT / BSD
-
-Author Information
-------------------
-
-This role was created in 2020 by Carlos Guidugli.
+## Features
+
+- Installs audit packages appropriate for the target distribution
+- Configures `auditd` settings in `/etc/audit/auditd.conf`
+- Deploys selected rules into `/etc/audit/rules.d/`
+- Generates a final immutable rules file (`99-finalize.rules`)
+- Uses `augenrules --load` to regenerate and apply rules
+- Skips service-start behavior in containers where `auditd` runtime is not normally usable
+- Supports reusable rule templates for:
+  - identity changes
+  - login/session tracking
+  - package management
+  - sudo activity
+  - kernel/module changes
+  - suspicious binaries and reconnaissance activity
+  - virtualization/container-related activity
+
+---
+
+## Requirements
+
+- Ansible >= 2.14
+- Python available on target hosts
+- Root or privilege escalation capability to manage packages and files under `/etc/audit`
+- For full runtime behavior on real hosts, the system should not be a container-only environment
+
+> **Important:** On containerized systems, `auditd` usually cannot function the same way it does on a real VM or bare-metal host. This role avoids starting `auditd` in containers, but still supports configuration and file-level validation during Molecule tests.
+
+---
+
+## Supported platforms
+
+This repository is structured to support the latest two:
+- Ubuntu LTS releases
+- Debian releases
+- Fedora releases
+
+The current Molecule matrix is driven from `molecule/shared/vars.yml` and currently includes:
+
+- Ubuntu 26.04 / 24.04
+- Debian 13 / 12
+- Fedora 44 / 43
+
+---
+
+## Role Variables
+
+## Default Variables (`defaults/main.yml`)
+
+### Core behavior
+
+#### `audit_local_events`
+```yaml
+audit_local_events: true
+```
+Include local events in the audit stream.
+
+#### `audit_skip_grub_check`
+```yaml
+audit_skip_grub_check: false
+```
+If set to `false`, the role validates that GRUB contains:
+- `audit=1`
+- `audit_backlog_limit=...`
+
+If those are not present, the role fails and expects a separate GRUB role/process to manage kernel command line configuration.
+
+#### `audit_write_logs`
+```yaml
+audit_write_logs: true
+```
+Whether audit events are written to disk.
+
+---
+
+### Audit log file settings
+
+#### `audit_log_file`
+```yaml
+# audit_log_file: /var/log/audit/audit.log
+```
+Optional full path to the audit log file.
+
+#### `audit_log_format`
+```yaml
+audit_log_format: ENRICHED
+```
+How log records are stored. Common values:
+- `ENRICHED`
+- `RAW`
+
+#### `audit_log_group`
+```yaml
+# audit_log_group: root
+```
+Optional group owner for the audit log file.
+
+#### `audit_priority_boost`
+```yaml
+# audit_priority_boost: 4
+```
+Optional non-negative scheduling priority boost for `auditd`.
+
+#### `audit_flush`
+```yaml
+# audit_flush: INCREMENTAL_ASYNC
+```
+Flush mode. Supported logical values include:
+- `none`
+- `incremental`
+- `incremental_async`
+- `data`
+- `sync`
+
+#### `audit_freq`
+```yaml
+# audit_freq: 50
+```
+Flush frequency used when `audit_flush` is incremental-based.
+
+#### `audit_num_logs`
+```yaml
+# audit_num_logs: 5
+```
+Number of rotated audit log files to keep.
+
+#### `audit_max_log_file`
+```yaml
+audit_max_log_file: 256
+```
+Maximum audit log file size in MiB.
+
+#### `audit_max_log_file_action`
+```yaml
+audit_max_log_file_action: keep_logs
+```
+Action to take when `audit_max_log_file` is reached.
+
+---
+
+### Node identity / mail / low-space handling
+
+#### `audit_name_format`
+```yaml
+# audit_name_format: NONE
+```
+How node identity is added to events:
+- `none`
+- `hostname`
+- `fqd`
+- `numeric`
+- `user`
+
+#### `audit_name`
+```yaml
+# audit_name: mydomain
+```
+Required when `audit_name_format` is `user`.
+
+#### `audit_verify_email`
+```yaml
+# audit_verify_email: true
+```
+Whether to verify the domain from `audit_action_mail_acct`.
+
+#### `audit_action_mail_acct`
+```yaml
+# audit_action_mail_acct: root
+```
+Email address or alias used when auditd sends alerts.
+
+#### `audit_space_left`
+```yaml
+# audit_space_left: 75
+```
+Remaining filesystem threshold before action is taken.
+Can be either:
+- integer MiB
+- percentage (for example `5%`)
+
+#### `audit_space_left_action`
+```yaml
+# audit_space_left_action: email
+```
+Action when free space starts running low.
+
+#### `audit_admin_space_left`
+```yaml
+# audit_admin_space_left: 50
+```
+Last-chance low-space threshold in MiB.
+
+#### `audit_admin_space_left_action`
+```yaml
+audit_admin_space_left_action: suspend
+```
+Action at the admin threshold.
+
+#### `audit_disk_full_action`
+```yaml
+audit_disk_full_action: SUSPEND
+```
+Action when the audit filesystem becomes full.
+
+#### `audit_disk_error_action`
+```yaml
+audit_disk_error_action: SUSPEND
+```
+Action when a write or rotation error occurs.
+
+---
+
+### Remote audit transport settings
+
+#### `audit_tcp_listen_port`
+```yaml
+# audit_tcp_listen_port: 60
+```
+TCP port for receiving remote audit events.
+
+#### `audit_tcp_listen_queue`
+```yaml
+# audit_tcp_listen_queue: 5
+```
+Pending remote connection backlog.
+
+#### `audit_tcp_max_per_addr`
+```yaml
+# audit_tcp_max_per_addr: 1
+```
+Maximum concurrent remote audit connections per source IP.
+
+#### `audit_use_libwrap`
+```yaml
+# audit_use_libwrap: true
+```
+Whether `tcp_wrappers` should be used.
+
+#### `audit_tcp_client_ports`
+```yaml
+# audit_tcp_client_ports: 1024-65535
+```
+Allowed incoming client source ports.
+
+#### `audit_tcp_client_max_idle`
+```yaml
+# audit_tcp_client_max_idle: 0
+```
+Maximum idle time for remote clients.
+
+#### `audit_transport`
+```yaml
+# audit_transport: TCP
+```
+Transport for remote audit communication:
+- `TCP`
+- `KRB5`
+
+#### `audit_krb5_principal`
+```yaml
+# audit_krb5_principal: auditd
+```
+Kerberos principal used with `KRB5` transport.
+
+#### `audit_krb5_key_file`
+```yaml
+# audit_krb5_key_file: /etc/audit/audit.key
+```
+Kerberos key file path.
+
+#### `audit_distribute_network`
+```yaml
+# audit_distribute_network: false
+```
+Whether remote-originating events are distributed to the dispatcher.
+
+#### `audit_q_depth`
+```yaml
+# audit_q_depth: 400
+```
+Internal dispatcher queue depth.
+
+#### `audit_overflow_action`
+```yaml
+# audit_overflow_action: SYSLOG
+```
+Action when the dispatcher queue overflows.
+
+#### `audit_max_restarts`
+```yaml
+# audit_max_restarts: 10
+```
+Maximum plugin restarts after crashes.
+
+#### `audit_plugin_dir`
+```yaml
+# audit_plugin_dir: /etc/audit/plugins.d
+```
+Path to plugin configuration files.
+
+---
+
+### Rule deployment behavior
+
+#### `force_overwrite_audit`
+```yaml
+force_overwrite_audit: true
+```
+Whether deployed audit rule files should be overwritten when their content differs.
+
+#### `audit_sudo_log`
+```yaml
+audit_sudo_log: "{{ sudo_log | default('/var/log/sudo.log') }}"
+```
+Used by the `50-sudoers.rules` template so the sudo log path can align with a sudo role if one is also used.
+
+#### `audit_rules_files`
+```yaml
+audit_rules_files: []
+```
+List of rule template files to deploy into `/etc/audit/rules.d/`.
+
+The role intentionally provides many small reusable rule files instead of one monolithic ruleset.
+
+Examples available in `templates/` include:
+- `01-init.rules`
+- `10-self-audit.rules`
+- `20-filters.rules`
+- `30-kernel.rules`
+- `40-identity.rules`
+- `40-login.rules`
+- `40-mount.rules`
+- `40-swap.rules`
+- `40-time.rules`
+- `50-cron.rules`
+- `50-dac.rules`
+- `50-hostname.rules`
+- `50-network.rules`
+- `50-pkg-manager.rules`
+- `50-remote-shell.rules`
+- `50-sudoers.rules`
+- `55-privileged.rules`
+- `60-pam.rules`
+- `60-sshd.rules`
+- `60-systemd.rules`
+- `70-access.rules`
+- `70-mac-policy.rules`
+- `70-sessions.rules`
+- `70-shell-profiles.rules`
+- `80-privilege-abuse.rules`
+- `80-reconnaissance.rules`
+- `80-socket-creation.rules`
+- `80-suspicious.rules`
+- `80-suspicious-shells.rules`
+- `80-virtualization.rules`
+- `90-root-exec.rules`
+- `95-32bit-api-exploitation.rules`
+
+---
+
+## Internal Variables (`vars/main.yml`)
+
+These are internal role variables and normally should not need user overrides.
+
+### `audit_packages`
+Distribution-aware package list derived from `_audit_packages`.
+
+### `audit_config_path`
+```yaml
+audit_config_path: /etc/audit/auditd.conf
+```
+
+### `audit_rulesd_path`
+```yaml
+audit_rulesd_path: /etc/audit/rules.d
+```
+
+### `_container_types`
+Container/virtualization types treated as container-like in service logic.
+
+### `_audit_vars`
+Mapping used to translate role variable names into auditd.conf parameter names.
+
+---
+
+## Validation model
+
+This role uses a two-layer validation approach:
+
+1. **`meta/argument_specs.yml`**
+   - validates supported inputs
+   - checks types and basic allowed values
+
+2. **`tasks/assert.yml`**
+   - validates cross-field semantics that are better expressed in asserts
+   - examples:
+     - `audit_flush` may require `audit_freq`
+     - `audit_name_format: user` requires `audit_name`
+     - `audit_transport: krb5` requires Kerberos settings
+
+---
+
+## Example Playbook
+
+### Minimal example
+
+```yaml
+- name: Configure Linux auditing
+  hosts: all
+  become: true
+
+  roles:
+    - role: guidugli.audit
+```
+
+### Example with selected rule files
+
+```yaml
+- name: Configure Linux auditing with selected rules
+  hosts: all
+  become: true
+
+  roles:
+    - role: guidugli.audit
+      vars:
+        audit_rules_files:
+          - 01-init.rules
+          - 10-self-audit.rules
+          - 30-kernel.rules
+          - 40-identity.rules
+          - 50-sudoers.rules
+          - 55-privileged.rules
+          - 95-32bit-api-exploitation.rules
+```
+
+### Example enabling remote audit transport settings
+
+```yaml
+- name: Configure remote audit transport
+  hosts: audit_servers
+  become: true
+
+  roles:
+    - role: guidugli.audit
+      vars:
+        audit_transport: TCP
+        audit_tcp_listen_port: 60
+        audit_tcp_listen_queue: 5
+        audit_tcp_max_per_addr: 2
+```
+
+---
+
+## What the role configures
+
+### 1. Audit packages
+Installs the correct packages for the target platform.
+
+### 2. `auditd.conf`
+Writes selected configuration values into:
+
+```text
+/etc/audit/auditd.conf
+```
+
+### 3. Rule files
+Deploys selected templates into:
+
+```text
+/etc/audit/rules.d/
+```
+
+### 4. Immutable final rule
+Ensures:
+
+```text
+/etc/audit/rules.d/99-finalize.rules
+```
+
+contains:
+
+```text
+-e 2
+```
+
+### 5. Rule reload
+Uses:
+
+```bash
+augenrules --load
+```
+
+to regenerate and apply rules when changes occur.
+
+---
+
+## Testing
+
+This role uses **Molecule + Podman** and follows the same shared/default/systemd scenario structure used in the other modernized roles.
+
+### Scenarios
+- `default`
+- `systemd`
+
+### Run locally
+
+```bash
+./scripts/run_local.sh
+```
+
+or individually:
+
+```bash
+molecule test -s default
+molecule test -s systemd
+```
+
+### Verify strategy
+The shared verify playbook is audit-specific and focuses on:
+- `auditctl` binary presence
+- config file existence
+- rule directory existence
+- finalize rule presence and content
+- deployed rule file permissions
+- runtime checks only where meaningful
+
+---
+
+## Release metadata workflow
+
+Like the updated sudo/chrony-style roles, this role uses generated metadata based on the shared Molecule matrix.
+
+### Source of truth
+
+```text
+molecule/shared/vars.yml
+```
+
+This drives:
+- tested platforms
+- generated inventories
+- generated `meta/main.yml`
+
+### Refresh metadata
+
+```bash
+./scripts/update_release_metadata.sh
+```
+
+### Prepare a release
+
+```bash
+./scripts/release.sh --version v1.2.0 --message "Release v1.2.0"
+```
+
+---
+
+## Relevant project structure
+
+```text
+defaults/
+  main.yml
+
+vars/
+  main.yml
+
+tasks/
+  main.yml
+  assert.yml
+  audit.yml
+
+handlers/
+  main.yml
+
+templates/
+  *.rules
+  meta_main.yml.j2
+
+meta/
+  main.yml
+  argument_specs.yml
+
+molecule/
+  shared/
+  default/
+  systemd/
+```
+
+---
+
+## Design notes
+
+- This role is intentionally **modular** rather than shipping a single opinionated monolithic rules file.
+- Containers are treated as a **test/configuration target**, not a full runtime replacement for host audit behavior.
+- GRUB/kernel command line validation is intentionally separated from full bootloader management.
+- The role is suitable for building larger compliance/hardening baselines where audit rules are selected per environment.
+
+---
+
+## License
+
+MIT
+
+---
+
+## Author
+
+Carlos Guidugli
