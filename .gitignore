@@ -9,3 +9,4 @@
 # Tool/cache dirs
 .cache/
 .molecule/
+.ansible/
