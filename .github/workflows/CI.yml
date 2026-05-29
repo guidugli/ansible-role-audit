@@ -12,6 +12,7 @@ name: CI
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/.ansible/collections
 
 jobs:
   molecule:
@@ -37,7 +38,8 @@ jobs:
           python3 -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/python -m pip install -r requirements-dev.txt
-          .venv/bin/ansible-galaxy collection install -r requirements.yml
+          mkdir -p .ansible/collections
+          .venv/bin/ansible-galaxy collection install -r requirements.yml -p .ansible/collections
 
       # yamllint disable rule:line-length
       - name: Derive role FQCN from meta/main.yml
