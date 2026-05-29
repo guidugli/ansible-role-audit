@@ -37,7 +37,7 @@ PLATFORM_ORDER = ('fedora', 'ubuntu', 'debian')
 
 # Set to True only if Galaxy / ansible-lint metadata validation lags behind
 # newer Fedora releases and rejects valid Fedora version strings.
-RENDER_FEDORA_AS_ALL = False
+RENDER_FEDORA_AS_ALL = True
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -136,7 +136,6 @@ def render(template_path: Path, output_path: Path, vars_path: Path) -> None:
     template = env.get_template(template_path.name)
     rendered = template.render(
         template_name=template_path.name,
-        generated_on=datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
         platforms=platforms,
     )
 
