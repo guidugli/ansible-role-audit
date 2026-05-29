@@ -1,162 +1,48 @@
 ---
-# defaults file for audit
-#
-# Normalized version:
-# - enum/string options use lowercase consistently where supported by auditd.conf
-# - values remain aligned to the role's historical intent and comments
-
-# Include local events in the audit stream.
+# Core behavior
+# Callers should set become: true at the play level when privilege escalation is required.
 audit_local_events: true
-
-# If false, require GRUB cmdline to contain audit=1 and audit_backlog_limit.
 audit_skip_grub_check: false
-
-# Full path to the audit log file.
-# audit_log_file: /var/log/audit/audit.log
-
-# Whether audit logs should be written to disk.
 audit_write_logs: true
 
-# Log storage format: raw or enriched.
+# auditd.conf settings
+audit_log_file: ''
 audit_log_format: enriched
-
-# Group applied to log file permissions.
-# audit_log_group: root
-
-# Priority boost for auditd (non-negative integer).
-# audit_priority_boost: 4
-
-# Flush strategy: none, incremental, incremental_async, data, sync.
-# audit_flush: incremental_async
-
-# Flush frequency when using incremental/incremental_async.
-# audit_freq: 50
-
-# Number of rotated logs to keep when action is rotate.
-# audit_num_logs: 5
-
-# Node name insertion mode: none, hostname, fqd, numeric, user.
-# audit_name_format: none
-
-# Custom node name when audit_name_format=user.
-# audit_name: mydomain
-
-# Maximum log file size in MiB.
+audit_log_group: ''
+audit_priority_boost: 4
+audit_flush: incremental_async
+audit_freq: 50
+audit_num_logs: 5
+audit_name_format: none
+audit_name: ''
 audit_max_log_file: 256
-
-# Action when max log file size is reached.
 audit_max_log_file_action: keep_logs
-
-# Whether to verify action_mail_acct domain resolution.
-# audit_verify_email: true
-
-# Email/alias used for audit alerts.
-# audit_action_mail_acct: root
-
-# Low disk space threshold in MiB or percentage.
-# audit_space_left: 75
-
-# Action when disk space is getting low.
-# audit_space_left_action: email
-
-# Last-chance low disk space threshold in MiB.
-# audit_admin_space_left: 50
-
-# Action when admin-space-left threshold is reached.
+audit_verify_email: true
+audit_action_mail_acct: ''
+audit_space_left: 75
+audit_space_left_action: email
+audit_admin_space_left: 50
 audit_admin_space_left_action: suspend
-
-# Action when the audit filesystem is full.
 audit_disk_full_action: suspend
-
-# Action when an audit log write or rotation error occurs.
 audit_disk_error_action: suspend
 
-# TCP port for receiving remote audit events.
-# audit_tcp_listen_port: 60
+# Remote audit transport
+audit_tcp_listen_port: 60
+audit_tcp_listen_queue: 5
+audit_tcp_max_per_addr: 1
+audit_use_libwrap: true
+audit_tcp_client_ports: '1024-65535'
+audit_tcp_client_max_idle: 0
+audit_transport: tcp
+audit_krb5_principal: ''
+audit_krb5_key_file: ''
+audit_distribute_network: false
+audit_q_depth: 400
+audit_overflow_action: syslog
+audit_max_restarts: 10
+audit_plugin_dir: /etc/audit/plugins.d
 
-# Backlog of pending remote audit connections.
-# audit_tcp_listen_queue: 5
-
-# Maximum concurrent remote audit connections per source IP.
-# audit_tcp_max_per_addr: 1
-
-# Whether to use tcp_wrappers for incoming audit connections.
-# audit_use_libwrap: true
-
-# Allowed client source ports for incoming audit connections.
-# audit_tcp_client_ports: 1024-65535
-
-# Maximum idle time for remote audit clients in seconds.
-# audit_tcp_client_max_idle: 0
-
-# Transport for remote audit communication: tcp or krb5.
-# audit_transport: tcp
-
-# Kerberos principal for auditd.
-# audit_krb5_principal: auditd
-
-# Kerberos key file path.
-# audit_krb5_key_file: /etc/audit/audit.key
-
-# Whether network-originated events should be sent to audispd.
-# audit_distribute_network: false
-
-# Internal audisp queue depth.
-# audit_q_depth: 400
-
-# Action when audispd queue overflows.
-# audit_overflow_action: syslog
-
-# Maximum restarts for crashed audit plugins.
-# audit_max_restarts: 10
-
-# Audit plugin configuration directory.
-# audit_plugin_dir: /etc/audit/plugins.d
-
-# Overwrite deployed rule files when content differs.
+# Rule deployment
 force_overwrite_audit: true
-
-# Integrate with a sudo role if present, otherwise use a default path.
 audit_sudo_log: "{{ sudo_log | default('/var/log/sudo.log') }}"
-
-# List of rule template files to deploy.
 audit_rules_files: []
-#01-init.rules
-#10-self-audit.rules
-#20-filters.rules
-#30-kernel.rules
-#40-identity.rules
-#40-login.rules
-#40-mount.rules
-#40-stunnel.rules
-#40-swap.rules
-#40-time.rules
-#50-cron.rules
-#50-dac.rules
-#50-hostname.rules
-#50-ip-connections.rules
-#50-network.rules
-#50-pkg-manager.rules
-#50-remote-shell.rules
-#50-sudoers.rules
-#50-system-libs.rules
-#50-system-startup.rules
-#55-privileged.rules
-#60-mail.rules
-#60-pam.rules
-#60-sshd.rules
-#60-systemd.rules
-#70-access.rules
-#70-mac-policy.rules
-#70-power-state.rules
-#70-sessions.rules
-#70-shell-profiles.rules
-#80-data-compression.rules
-#80-privilege-abuse.rules
-#80-reconnaissance.rules
-#80-socket-creation.rules
-#80-suspicious.rules
-#80-suspicious-shells.rules
-#85-network.rules
-#85-virtualization.rules
-#90-32bit-api-exploitation.rules

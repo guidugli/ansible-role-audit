@@ -1,12 +1,20 @@
 ---
-# vars file for audit
-
 _audit_packages:
-  default: ['auditd', 'audispd-plugins']
-  RedHat: ['audit', 'audit-libs']
-  Rocky: ['audit', 'audit-libs']
-  CentOS: ['audit', 'audit-libs']
-  Fedora: ['audit', 'audit-libs']
+  default:
+    - auditd
+    - audispd-plugins
+  RedHat:
+    - audit
+    - audit-libs
+  Rocky:
+    - audit
+    - audit-libs
+  CentOS:
+    - audit
+    - audit-libs
+  Fedora:
+    - audit
+    - audit-libs
 
 audit_packages: >-
   {{
@@ -20,7 +28,73 @@ audit_packages: >-
 audit_config_path: /etc/audit/auditd.conf
 audit_rulesd_path: /etc/audit/rules.d
 
-_container_types: ['docker', 'podman', 'lxc', 'containerd', 'container']
+_container_types:
+  - docker
+  - podman
+  - lxc
+  - containerd
+  - container
+
+_audit_optional_string_vars:
+  - audit_log_file
+  - audit_log_group
+  - audit_name
+  - audit_action_mail_acct
+  - audit_krb5_principal
+  - audit_krb5_key_file
+  - audit_plugin_dir
+  - audit_tcp_client_ports
+
+_audit_bool_vars:
+  - audit_local_events
+  - audit_write_logs
+  - audit_verify_email
+  - audit_use_libwrap
+  - audit_distribute_network
+
+_audit_lowercase_option_vars:
+  - audit_log_format
+  - audit_flush
+  - audit_name_format
+  - audit_max_log_file_action
+  - audit_space_left_action
+  - audit_admin_space_left_action
+  - audit_disk_full_action
+  - audit_disk_error_action
+  - audit_transport
+  - audit_overflow_action
+
+_audit_config_items:
+  - audit_log_file
+  - audit_log_format
+  - audit_log_group
+  - audit_priority_boost
+  - audit_flush
+  - audit_freq
+  - audit_num_logs
+  - audit_name_format
+  - audit_name
+  - audit_max_log_file
+  - audit_max_log_file_action
+  - audit_action_mail_acct
+  - audit_space_left
+  - audit_space_left_action
+  - audit_admin_space_left
+  - audit_admin_space_left_action
+  - audit_disk_full_action
+  - audit_disk_error_action
+  - audit_tcp_listen_port
+  - audit_tcp_listen_queue
+  - audit_tcp_max_per_addr
+  - audit_tcp_client_ports
+  - audit_tcp_client_max_idle
+  - audit_transport
+  - audit_krb5_principal
+  - audit_krb5_key_file
+  - audit_q_depth
+  - audit_overflow_action
+  - audit_max_restarts
+  - audit_plugin_dir
 
 _audit_vars:
   audit_log_file: log_file
@@ -51,9 +125,55 @@ _audit_vars:
   audit_krb5_key_file: krb5_key_file
   audit_q_depth: q_depth
   audit_overflow_action: overflow_action
+  audit_max_restarts: max_restarts
   audit_local_events: local_events
   audit_write_logs: write_logs
   audit_verify_email: verify_email
   audit_use_libwrap: use_libwrap
   audit_distribute_network: distribute_network
   audit_plugin_dir: plugin_dir
+
+_audit_available_rule_templates:
+  - 01-init.rules
+  - 10-self-audit.rules
+  - 20-filters.rules
+  - 30-kernel.rules
+  - 40-identity.rules
+  - 40-login.rules
+  - 40-mount.rules
+  - 40-stunnel.rules
+  - 40-swap.rules
+  - 40-time.rules
+  - 50-cron.rules
+  - 50-dac.rules
+  - 50-hostname.rules
+  - 50-ip-connections.rules
+  - 50-network.rules
+  - 50-pkg-manager.rules
+  - 50-remote-shell.rules
+  - 50-sudoers.rules
+  - 50-system-libs.rules
+  - 50-system-startup.rules
+  - 55-privileged.rules
+  - 60-mail.rules
+  - 60-pam.rules
+  - 60-sshd.rules
+  - 60-systemd.rules
+  - 70-access.rules
+  - 70-mac-policy.rules
+  - 70-power-state.rules
+  - 70-sessions.rules
+  - 70-shell-profiles.rules
+  - 80-data-compression.rules
+  - 80-network.rules
+  - 80-privilege-abuse.rules
+  - 80-reconnaissance.rules
+  - 80-socket-creation.rules
+  - 80-suspicious.rules
+  - 80-suspicious-shells.rules
+  - 80-virtualization.rules
+  - 90-IPC.rules
+  - 90-cred-in-files.rules
+  - 90-root-exec.rules
+  - 90-special-sw.rules
+  - 95-32bit-api-exploitation.rules

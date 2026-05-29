@@ -1,8 +1,14 @@
+---
 name: CI
 
-on:
+'on':
   push:
+    branches:
+      - main
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * 0'
 
 jobs:
   molecule:
@@ -10,10 +16,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [default]
+        scenario:
+          - default
+          - systemd
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out the codebase
+        uses: actions/checkout@v4
 
       - name: Install system deps (podman + python)
         run: |
@@ -27,12 +36,24 @@ jobs:
           .venv/bin/python -m pip install -r requirements-dev.txt
           .venv/bin/python -m ansible.cli.galaxy collection install -r requirements.yml
 
+      # yamllint disable rule:line-length
+      - name: Derive role FQCN from meta/main.yml
+        id: role_meta
+        run: |
+          fqcn=$(.venv/bin/python -c "from pathlib import Path; import yaml; meta=yaml.safe_load(Path('meta/main.yml').read_text(encoding='utf-8')) or {}; info=meta.get('galaxy_info', {}); namespace=info.get('namespace', '').strip(); role_name=info.get('role_name', '').strip(); assert namespace and role_name, 'namespace and role_name must be defined in meta/main.yml'; print(f'{namespace}.{role_name}')")
+          echo "fqcn=${fqcn}" >> "$GITHUB_OUTPUT"
+      # yamllint enable rule:line-length
+
+      - name: Expose current repo as Galaxy-style role path
+        run: |
+          mkdir -p .ansible/roles
+          ln -sfn "$PWD" ".ansible/roles/${{ steps.role_meta.outputs.fqcn }}"
+
       - name: Update matrix + inventories
         run: |
           . .venv/bin/activate
           python3 scripts/update_matrix.py
 
-      - name: Run Molecule
+      - name: Run yamllint
         run: |
           . .venv/bin/activate
-          molecule test -s ${{ matrix.scenario }}

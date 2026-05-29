@@ -1,24 +1,19 @@
 ---
 # Generated file. Do not edit directly.
 # Source template: meta_main.yml.j2
-# Generated on: 2026-05-25T22:57:03Z
+# Generated on: 2026-05-28T21:32:40Z
 
 dependencies: []
-
 galaxy_info:
   role_name: audit
   namespace: guidugli
   author: guidugli
   company: Creuzo Tech
-
   description: >-
-    Install and configure audit on Linux distributions.
-    This role focuses on package installation and configuration management,
-    with multi-distribution support and container-friendly testability.
-
+    Install and configure Linux auditd, deploy reusable audit rules, and keep
+    release metadata aligned with the shared Molecule platform matrix.
   license: MIT
-  min_ansible_version: "2.14"
-
+  min_ansible_version: '2.14'
   platforms:
     - name: Fedora
       versions:
@@ -31,8 +26,7 @@ galaxy_info:
     - name: Debian
       versions:
         - "trixie"
-        - "bookworm"
-
+        - "bullseye"
   galaxy_tags:
     - audit
     - auditd

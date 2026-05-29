@@ -1,9 +1,7 @@
 ---
 - name: Verify audit role
   hosts: all
-  gather_facts: false
-  become: false
-
+  gather_facts: true
   tasks:
     - name: Locate auditctl binary
       ansible.builtin.command:
@@ -17,12 +15,11 @@
 
     - name: Assert auditctl binary is installed
       ansible.builtin.assert:
+        quiet: true
         that:
           - auditctl_path.rc == 0
           - auditctl_path.stdout | trim | length > 0
-        fail_msg: >-
-          auditctl binary is not available. Ensure the audit package was installed correctly.
-        quiet: true
+        fail_msg: auditctl binary is not available.
 
     - name: Stat auditd configuration file
       ansible.builtin.stat:
@@ -31,13 +28,12 @@
 
     - name: Assert auditd configuration file exists
       ansible.builtin.assert:
+        quiet: true
         that:
           - auditd_conf_stat.stat.exists
           - auditd_conf_stat.stat.pw_name == 'root'
           - auditd_conf_stat.stat.gr_name == 'root'
-        fail_msg: >-
-          /etc/audit/auditd.conf must exist and be owned by root.
-        quiet: true
+        fail_msg: /etc/audit/auditd.conf must exist and be owned by root.
 
     - name: Stat audit rules directory
       ansible.builtin.stat:
@@ -46,12 +42,11 @@
 
     - name: Assert audit rules directory exists
       ansible.builtin.assert:
+        quiet: true
         that:
           - audit_rulesd_stat.stat.exists
           - audit_rulesd_stat.stat.isdir
-        fail_msg: >-
-          /etc/audit/rules.d must exist.
-        quiet: true
+        fail_msg: /etc/audit/rules.d must exist.
 
     - name: Stat immutable finalize rule
       ansible.builtin.stat:
@@ -60,72 +55,83 @@
 
     - name: Assert immutable finalize rule exists with secure mode
       ansible.builtin.assert:
+        quiet: true
         that:
           - audit_finalize_rule_stat.stat.exists
           - audit_finalize_rule_stat.stat.pw_name == 'root'
           - audit_finalize_rule_stat.stat.gr_name == 'root'
           - audit_finalize_rule_stat.stat.mode == '0600'
         fail_msg: >-
-          /etc/audit/rules.d/99-finalize.rules must exist with owner root:root and mode 0600.
-        quiet: true
+          /etc/audit/rules.d/99-finalize.rules must exist with owner root:root
+          and mode 0600.
 
-    - name: Verify immutable finalize rule content
-      ansible.builtin.command: grep -Fx -- '-e 2' /etc/audit/rules.d/99-finalize.rules
+    - name: Verify finalize rule content
+      ansible.builtin.command:
+        argv:
+          - grep
+          - -Fx
+          - --
+          - -e 2
+          - /etc/audit/rules.d/99-finalize.rules
       register: audit_finalize_rule_content
       changed_when: false
 
-    - name: Assert immutable finalize rule content is correct
+    - name: Assert finalize rule content is correct
       ansible.builtin.assert:
+        quiet: true
         that:
           - audit_finalize_rule_content.rc == 0
-        fail_msg: >-
-          /etc/audit/rules.d/99-finalize.rules must contain '-e 2'.
-        quiet: true
+        fail_msg: /etc/audit/rules.d/99-finalize.rules must contain -e 2.
 
-    - name: Check selected deployed rule files
+    - name: Stat selected deployed rule files
       ansible.builtin.stat:
-        path: "/etc/audit/rules.d/{{ item }}"
+        path: '/etc/audit/rules.d/{{ item }}'
       loop: "{{ audit_rules_files | default([]) }}"
       register: audit_rule_file_stats
+      when: (audit_rules_files | default([]) | length) > 0
 
     - name: Assert selected audit rule files exist with secure mode
       ansible.builtin.assert:
+        quiet: true
         that:
           - item.stat.exists
           - item.stat.pw_name == 'root'
           - item.stat.gr_name == 'root'
           - item.stat.mode == '0600'
         fail_msg: >-
-          Audit rule file {{ item.item }} must exist with owner root:root and mode 0600.
-        quiet: true
+          Audit rule file {{ item.item }} must exist with owner root:root and
+          mode 0600.
       loop: "{{ audit_rule_file_stats.results | default([]) }}"
-      when:
-        - audit_rules_files is defined
-        - audit_rules_files | length > 0
+      when: (audit_rules_files | default([]) | length) > 0
 
-    - name: Check auditd daemon state on non-container hosts
-      ansible.builtin.command: systemctl is-active auditd
+    - name: Validate audit rules syntax
+      ansible.builtin.command:
+        argv:
+          - augenrules
+          - --check
+      register: audit_rules_check
+      changed_when: false
+      failed_when: audit_rules_check.rc != 0
+
+    - name: Check auditd service state on non-container systemd targets
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - is-active
+          - auditd
       register: auditd_active
       changed_when: false
       failed_when: false
       when:
-        - ansible_service_mgr is defined
-        - ansible_virtualization_type is not defined or ansible_virtualization_type not in ['docker', 'podman', 'lxc', 'containerd', 'container']
+        - ansible_facts['service_mgr'] | default('') == 'systemd'
+        - ansible_facts['virtualization_type'] |
+          default('') not in ['docker', 'podman', 'lxc', 'containerd', 'container']
 
-    - name: Assert auditd daemon is active on non-container hosts
+    - name: Assert auditd service is active on non-container systemd targets
       ansible.builtin.assert:
+        quiet: true
         that:
           - auditd_active.rc == 0
           - auditd_active.stdout | trim == 'active'
-        fail_msg: >-
-          auditd should be active on non-container hosts.
-        quiet: true
-      when:
-        - auditd_active is defined
-        - auditd_active.skipped is not defined or not auditd_active.skipped
-
-    - name: Validate audit rules syntax
-      ansible.builtin.command: augenrules --check
-      register: audit_rules_check
-      changed_when: false
-      failed_when: audit_rules_check.rc != 0
+        fail_msg: auditd should be active on non-container systemd targets.
+      when: auditd_active is defined and (auditd_active.skipped | default(false)) | bool == false
