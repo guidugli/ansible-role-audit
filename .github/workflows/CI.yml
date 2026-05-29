@@ -13,6 +13,7 @@ name: CI
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/.ansible/collections
+  ANSIBLE_CONFIG: ${{ github.workspace }}/ansible.cfg
 
 jobs:
   molecule:
