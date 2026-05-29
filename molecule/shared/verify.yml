@@ -132,6 +132,9 @@
         quiet: true
         that:
           - auditd_active.rc == 0
-          - auditd_active.stdout | trim == 'active'
+          - (auditd_active.stdout | trim) == 'active'
         fail_msg: auditd should be active on non-container systemd targets.
-      when: auditd_active is defined and (auditd_active.skipped | default(false)) | bool == false
+
+      when:
+        - auditd_active is defined
+        - not (auditd_active.skipped | default(false) | bool)
