@@ -1,0 +1,141 @@
+---
+- name: Read the configured audit log path
+  ansible.builtin.command:
+    argv:
+      - awk
+      - -F=
+      - >-
+        /^[[:space:]]*log_file[[:space:]]*=/ {
+          value = $2;
+          gsub(/^[[:space:]]+|[[:space:]]+$/, "", value);
+          print value;
+          exit
+        }
+      - /etc/audit/auditd.conf
+  register: audit_log_file_result
+  changed_when: false
+  tags:
+    - audit
+    - validate
+
+- name: Validate the configured audit log path
+  ansible.builtin.assert:
+    that:
+      - audit_log_file_result.stdout | length > 0
+      - audit_log_file_result.stdout is match('^/')
+    fail_msg: >-
+      The audit log path could not be determined from
+      /etc/audit/auditd.conf. Ensure log_file contains an absolute path.
+    quiet: true
+  tags:
+    - audit
+    - validate
+
+- name: Set effective audit log paths
+  ansible.builtin.set_fact:
+    audit_effective_log_file: "{{ audit_log_file_result.stdout }}"
+    audit_effective_log_directory: >-
+      {{ audit_log_file_result.stdout | dirname }}
+  tags:
+    - audit
+    - config
+
+- name: Configure the audit log directory
+  ansible.builtin.file:
+    path: "{{ audit_effective_log_directory }}"
+    state: directory
+    owner: "{{ audit_log_file_owner }}"
+    group: "{{ audit_log_file_group }}"
+    mode: "{{ audit_log_directory_mode }}"
+  tags:
+    - audit
+    - config
+
+- name: Find existing audit log files
+  ansible.builtin.find:
+    paths:
+      - "{{ audit_effective_log_directory }}"
+    file_type: file
+    recurse: false
+  register: audit_log_files
+  tags:
+    - audit
+    - validate
+
+- name: Configure existing audit log file access
+  ansible.builtin.file:
+    path: "{{ audit_log_file.path }}"
+    owner: "{{ audit_log_file_owner }}"
+    group: "{{ audit_log_file_group }}"
+    mode: "{{ audit_log_file_mode }}"
+  loop: "{{ audit_log_files.files }}"
+  loop_control:
+    loop_var: audit_log_file
+    label: "{{ audit_log_file.path }}"
+  tags:
+    - audit
+    - config
+
+- name: Find audit configuration files
+  ansible.builtin.find:
+    paths:
+      - /etc/audit
+    patterns:
+      - "*.conf"
+      - "*.rules"
+    file_type: file
+    recurse: true
+  register: audit_configuration_files
+  tags:
+    - audit
+    - validate
+
+- name: Configure audit configuration file access
+  ansible.builtin.file:
+    path: "{{ audit_configuration_file.path }}"
+    owner: "{{ audit_config_file_owner }}"
+    group: "{{ audit_config_file_group }}"
+    mode: "{{ audit_config_file_mode }}"
+  loop: "{{ audit_configuration_files.files }}"
+  loop_control:
+    loop_var: audit_configuration_file
+    label: "{{ audit_configuration_file.path }}"
+  tags:
+    - audit
+    - config
+
+- name: Inspect audit tools
+  ansible.builtin.stat:
+    path: "{{ audit_tool }}"
+    follow: true
+  loop: "{{ audit_tools }}"
+  loop_control:
+    loop_var: audit_tool
+    label: "{{ audit_tool }}"
+  register: audit_tool_stats
+  tags:
+    - audit
+    - validate
+
+- name: Configure audit tool access
+  ansible.builtin.file:
+    path: "{{ audit_tool_stat.audit_tool }}"
+    owner: "{{ audit_tool_owner }}"
+    group: "{{ audit_tool_group }}"
+    mode: "{{ audit_tool_mode }}"
+    follow: true
+  loop: "{{ audit_tool_stats.results }}"
+  loop_control:
+    loop_var: audit_tool_stat
+    label: >-
+      {{
+        audit_tool_stat.audit_tool
+        | default('unknown audit tool')
+      }}
+  when:
+    - not audit_tool_stat.skipped | default(false)
+    - audit_tool_stat.stat is defined
+    - audit_tool_stat.stat.exists | default(false)
+  tags:
+    - audit
+    - config

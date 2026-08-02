@@ -1,7 +1,12 @@
 ---
+
 - name: Converge
   hosts: all
   gather_facts: true
-  become: false
   roles:
     - role: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+      vars:
+        audit_manage_file_access: true
+      tags:
+        - audit
+        - config

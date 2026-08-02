@@ -44,5 +44,40 @@ audit_plugin_dir: /etc/audit/plugins.d
 
 # Rule deployment
 force_overwrite_audit: true
-audit_sudo_log: "{{ sudo_log | default('/var/log/sudo.log') }}"
-audit_rules_files: []
+audit_sudo_log: /var/log/sudo.log
+audit_rules_files:
+  - 40-identity.rules
+  - 40-login.rules
+  - 50-network.rules
+  - 50-sudoers.rules
+  - 55-privileged.rules
+  - 60-pam.rules
+  - 70-mac-policy.rules
+  - 70-sessions.rules
+
+# CIS audit file-access controls
+audit_manage_file_access: false
+
+audit_log_directory_mode: '0750'
+audit_log_file_mode: '0640'
+audit_log_file_owner: root
+
+# CIS accepts root or adm for audit log files.
+# Use root for the conservative cross-platform default.
+audit_log_file_group: root
+
+audit_config_file_mode: '0640'
+audit_config_file_owner: root
+audit_config_file_group: root
+
+audit_tool_owner: root
+audit_tool_group: root
+audit_tool_mode: '0755'
+
+audit_tools:
+  - /sbin/auditctl
+  - /sbin/aureport
+  - /sbin/ausearch
+  - /sbin/autrace
+  - /sbin/auditd
+  - /sbin/augenrules

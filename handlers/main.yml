@@ -14,6 +14,10 @@
   failed_when: false
   listen: reload auditd
 
+  tags:
+    - audit
+    - validate
+
 - name: Rename {{ audit_rulesd_path }}/audit.rules
   ansible.builtin.command:
     argv:
@@ -26,6 +30,10 @@
   when: audit_cmd_result.rc == 0
   listen: reload auditd
 
+  tags:
+    - audit
+    - config
+
 - name: Generate rules and reload auditd
   ansible.builtin.command:
     argv:
@@ -37,3 +45,6 @@
     - ansible_facts.get('virtualization_type', '') not in _container_types
     - ansible_connection not in _container_types
   listen: reload auditd
+  tags:
+    - audit
+    - service

@@ -1,7 +1,12 @@
 ---
+
 - name: Verify audit role
   hosts: all
   gather_facts: true
+  vars_files:
+    - ../../defaults/main.yml
+  vars:
+    audit_manage_file_access: true
   tasks:
     - name: Locate auditctl binary
       ansible.builtin.command:
@@ -13,6 +18,10 @@
       changed_when: false
       failed_when: false
 
+      tags:
+        - audit
+        - validate
+
     - name: Assert auditctl binary is installed
       ansible.builtin.assert:
         quiet: true
@@ -21,10 +30,18 @@
           - auditctl_path.stdout | trim | length > 0
         fail_msg: auditctl binary is not available.
 
+      tags:
+        - audit
+        - validate
+
     - name: Stat auditd configuration file
       ansible.builtin.stat:
         path: /etc/audit/auditd.conf
       register: auditd_conf_stat
+
+      tags:
+        - audit
+        - validate
 
     - name: Assert auditd configuration file exists
       ansible.builtin.assert:
@@ -35,10 +52,18 @@
           - auditd_conf_stat.stat.gr_name == 'root'
         fail_msg: /etc/audit/auditd.conf must exist and be owned by root.
 
+      tags:
+        - audit
+        - validate
+
     - name: Stat audit rules directory
       ansible.builtin.stat:
         path: /etc/audit/rules.d
       register: audit_rulesd_stat
+
+      tags:
+        - audit
+        - validate
 
     - name: Assert audit rules directory exists
       ansible.builtin.assert:
@@ -48,22 +73,40 @@
           - audit_rulesd_stat.stat.isdir
         fail_msg: /etc/audit/rules.d must exist.
 
+      tags:
+        - audit
+        - validate
+
     - name: Stat immutable finalize rule
       ansible.builtin.stat:
         path: /etc/audit/rules.d/99-finalize.rules
       register: audit_finalize_rule_stat
+
+      tags:
+        - audit
+        - validate
 
     - name: Assert immutable finalize rule exists with secure mode
       ansible.builtin.assert:
         quiet: true
         that:
           - audit_finalize_rule_stat.stat.exists
-          - audit_finalize_rule_stat.stat.pw_name == 'root'
-          - audit_finalize_rule_stat.stat.gr_name == 'root'
-          - audit_finalize_rule_stat.stat.mode == '0600'
+          - audit_finalize_rule_stat.stat.pw_name == audit_config_file_owner
+          - audit_finalize_rule_stat.stat.gr_name == audit_config_file_group
+          - >-
+            audit_finalize_rule_stat.stat.mode
+            == audit_config_file_mode
         fail_msg: >-
-          /etc/audit/rules.d/99-finalize.rules must exist with owner root:root
-          and mode 0600.
+          /etc/audit/rules.d/99-finalize.rules must exist with owner
+          {{ audit_config_file_owner }}:{{ audit_config_file_group }}
+          and mode {{ audit_config_file_mode }}. Actual values were
+          {{ audit_finalize_rule_stat.stat.pw_name | default('unknown') }}:
+          {{ audit_finalize_rule_stat.stat.gr_name | default('unknown') }}
+          with mode
+          {{ audit_finalize_rule_stat.stat.mode | default('unknown') }}.
+      tags:
+        - audit
+        - validate
 
     - name: Verify finalize rule content
       ansible.builtin.command:
@@ -76,12 +119,20 @@
       register: audit_finalize_rule_content
       changed_when: false
 
+      tags:
+        - audit
+        - validate
+
     - name: Assert finalize rule content is correct
       ansible.builtin.assert:
         quiet: true
         that:
           - audit_finalize_rule_content.rc == 0
         fail_msg: /etc/audit/rules.d/99-finalize.rules must contain -e 2.
+
+      tags:
+        - audit
+        - validate
 
     - name: Stat selected deployed rule files
       ansible.builtin.stat:
@@ -90,19 +141,39 @@
       register: audit_rule_file_stats
       when: (audit_rules_files | default([]) | length) > 0
 
-    - name: Assert selected audit rule files exist with secure mode
+      tags:
+        - audit
+        - validate
+
+    - name: Assert selected audit rule files exist with secure access
       ansible.builtin.assert:
         quiet: true
         that:
-          - item.stat.exists
-          - item.stat.pw_name == 'root'
-          - item.stat.gr_name == 'root'
-          - item.stat.mode == '0600'
+          - audit_rule_file_stat.stat.exists
+          - audit_rule_file_stat.stat.isreg
+          - audit_rule_file_stat.stat.pw_name == audit_config_file_owner
+          - audit_rule_file_stat.stat.gr_name == audit_config_file_group
+          - not audit_rule_file_stat.stat.xusr
+          - not audit_rule_file_stat.stat.wgrp
+          - not audit_rule_file_stat.stat.xgrp
+          - not audit_rule_file_stat.stat.roth
+          - not audit_rule_file_stat.stat.woth
+          - not audit_rule_file_stat.stat.xoth
         fail_msg: >-
-          Audit rule file {{ item.item }} must exist with owner root:root and
-          mode 0600.
+          Audit rule file {{ audit_rule_file_stat.item }} must exist with owner
+          {{ audit_config_file_owner }}:{{ audit_config_file_group }} and mode
+          {{ audit_config_file_mode }} or more restrictive. Actual ownership is
+          {{ audit_rule_file_stat.stat.pw_name | default('unknown') }}:
+          {{ audit_rule_file_stat.stat.gr_name | default('unknown') }} with mode
+          {{ audit_rule_file_stat.stat.mode | default('unknown') }}.
       loop: "{{ audit_rule_file_stats.results | default([]) }}"
-      when: (audit_rules_files | default([]) | length) > 0
+      loop_control:
+        loop_var: audit_rule_file_stat
+        label: "{{ audit_rule_file_stat.item }}"
+      when: audit_rules_files | default([]) | length > 0
+      tags:
+        - audit
+        - validate
 
     - name: Validate audit rules syntax
       ansible.builtin.command:
@@ -112,6 +183,10 @@
       register: audit_rules_check
       changed_when: false
       failed_when: audit_rules_check.rc != 0
+
+      tags:
+        - audit
+        - validate
 
     - name: Check auditd service state on non-container systemd targets
       ansible.builtin.command:
@@ -124,8 +199,12 @@
       failed_when: false
       when:
         - ansible_facts['service_mgr'] | default('') == 'systemd'
-        - ansible_facts['virtualization_type'] |
-          default('') not in ['docker', 'podman', 'lxc', 'containerd', 'container']
+        - ansible_facts['virtualization_type'] | default('') not in ['docker', 'podman', 'lxc', 'containerd',
+          'container']
+
+      tags:
+        - audit
+        - validate
 
     - name: Assert auditd service is active on non-container systemd targets
       ansible.builtin.assert:
@@ -138,3 +217,217 @@
       when:
         - auditd_active is defined
         - not (auditd_active.skipped | default(false) | bool)
+      tags:
+        - audit
+        - validate
+
+    - name: Read the configured audit log path for verification
+      ansible.builtin.command:
+        argv:
+          - awk
+          - -F=
+          - >-
+            /^[[:space:]]*log_file[[:space:]]*=/ {
+              value = $2;
+              gsub(/^[[:space:]]+|[[:space:]]+$/, "", value);
+              print value;
+              exit
+            }
+          - /etc/audit/auditd.conf
+      register: audit_verify_log_file_result
+      changed_when: false
+      when: audit_manage_file_access
+      tags:
+        - audit
+        - validate
+
+    - name: Assert the configured audit log path is valid
+      ansible.builtin.assert:
+        that:
+          - audit_verify_log_file_result.stdout | length > 0
+          - audit_verify_log_file_result.stdout is match('^/')
+        fail_msg: >-
+          The audit log path could not be determined from
+          /etc/audit/auditd.conf or is not absolute.
+        quiet: true
+      when: audit_manage_file_access
+      tags:
+        - audit
+        - validate
+
+    - name: Set audit log paths for verification
+      ansible.builtin.set_fact:
+        audit_verify_log_file: "{{ audit_verify_log_file_result.stdout }}"
+        audit_verify_log_directory: >-
+          {{ audit_verify_log_file_result.stdout | dirname }}
+      when: audit_manage_file_access
+      tags:
+        - audit
+        - validate
+
+    - name: Inspect the audit log directory
+      ansible.builtin.stat:
+        path: "{{ audit_verify_log_directory }}"
+      register: audit_verify_log_directory_stat
+      when: audit_manage_file_access
+      tags:
+        - audit
+        - validate
+
+    - name: Assert audit log directory access
+      ansible.builtin.assert:
+        that:
+          - audit_verify_log_directory_stat.stat.exists
+          - audit_verify_log_directory_stat.stat.isdir
+          - audit_verify_log_directory_stat.stat.pw_name == audit_log_file_owner
+          - audit_verify_log_directory_stat.stat.gr_name == audit_log_file_group
+          - not audit_verify_log_directory_stat.stat.wgrp
+          - not audit_verify_log_directory_stat.stat.roth
+          - not audit_verify_log_directory_stat.stat.woth
+          - not audit_verify_log_directory_stat.stat.xoth
+        fail_msg: >-
+          Audit log directory access is not aligned:
+          {{ audit_verify_log_directory }}. Expected owner
+          {{ audit_log_file_owner }}:{{ audit_log_file_group }} and mode
+          {{ audit_log_directory_mode }} or more restrictive. Actual ownership is
+          {{ audit_verify_log_directory_stat.stat.pw_name | default('unknown') }}:
+          {{ audit_verify_log_directory_stat.stat.gr_name | default('unknown') }}
+          with mode
+          {{ audit_verify_log_directory_stat.stat.mode | default('unknown') }}.
+        quiet: true
+      when: audit_manage_file_access
+      tags:
+        - audit
+        - validate
+
+    - name: Find existing audit log files for verification
+      ansible.builtin.find:
+        paths:
+          - "{{ audit_verify_log_directory }}"
+        file_type: file
+        recurse: false
+      register: audit_verify_log_files
+      when: audit_manage_file_access
+      tags:
+        - audit
+        - validate
+
+    - name: Assert audit log file access
+      ansible.builtin.assert:
+        that:
+          - audit_verify_log_file.pw_name == audit_log_file_owner
+          - audit_verify_log_file.gr_name == audit_log_file_group
+          - not audit_verify_log_file.xusr
+          - not audit_verify_log_file.wgrp
+          - not audit_verify_log_file.xgrp
+          - not audit_verify_log_file.roth
+          - not audit_verify_log_file.woth
+          - not audit_verify_log_file.xoth
+        fail_msg: >-
+          Audit log file access is not aligned:
+          {{ audit_verify_log_file.path }}. Expected owner
+          {{ audit_log_file_owner }}:{{ audit_log_file_group }} and mode
+          {{ audit_log_file_mode }} or more restrictive. Actual ownership is
+          {{ audit_verify_log_file.pw_name | default('unknown') }}:
+          {{ audit_verify_log_file.gr_name | default('unknown') }} with mode
+          {{ audit_verify_log_file.mode | default('unknown') }}.
+        quiet: true
+      loop: "{{ audit_verify_log_files.files }}"
+      loop_control:
+        loop_var: audit_verify_log_file
+        label: "{{ audit_verify_log_file.path }}"
+      when: audit_manage_file_access
+      tags:
+        - audit
+        - validate
+
+    - name: Find deployed audit configuration files
+      ansible.builtin.find:
+        paths:
+          - /etc/audit
+        patterns:
+          - "*.conf"
+          - "*.rules"
+        file_type: file
+        recurse: true
+      register: audit_verify_configuration_files
+      when: audit_manage_file_access
+      tags:
+        - audit
+        - validate
+
+    - name: Assert audit configuration file access
+      ansible.builtin.assert:
+        that:
+          - audit_verify_configuration_file.pw_name == audit_config_file_owner
+          - audit_verify_configuration_file.gr_name == audit_config_file_group
+          - not audit_verify_configuration_file.xusr
+          - not audit_verify_configuration_file.wgrp
+          - not audit_verify_configuration_file.xgrp
+          - not audit_verify_configuration_file.roth
+          - not audit_verify_configuration_file.woth
+          - not audit_verify_configuration_file.xoth
+        fail_msg: >-
+          Audit configuration file access is not aligned:
+          {{ audit_verify_configuration_file.path }}. Expected owner
+          {{ audit_config_file_owner }}:{{ audit_config_file_group }} and mode
+          {{ audit_config_file_mode }} or more restrictive. Actual ownership is
+          {{ audit_verify_configuration_file.pw_name | default('unknown') }}:
+          {{ audit_verify_configuration_file.gr_name | default('unknown') }}
+          with mode
+          {{ audit_verify_configuration_file.mode | default('unknown') }}.
+        quiet: true
+      loop: "{{ audit_verify_configuration_files.files }}"
+      loop_control:
+        loop_var: audit_verify_configuration_file
+        label: "{{ audit_verify_configuration_file.path }}"
+      when: audit_manage_file_access
+      tags:
+        - audit
+        - validate
+
+    - name: Inspect audit tools for verification
+      ansible.builtin.stat:
+        path: "{{ audit_verify_tool }}"
+        follow: true
+      loop: "{{ audit_tools }}"
+      loop_control:
+        loop_var: audit_verify_tool
+        label: "{{ audit_verify_tool }}"
+      register: audit_verify_tool_stats
+      when: audit_manage_file_access
+      tags:
+        - audit
+        - validate
+
+    - name: Assert audit tool access
+      ansible.builtin.assert:
+        that:
+          - audit_verify_tool_stat.stat.pw_name == audit_tool_owner
+          - audit_verify_tool_stat.stat.gr_name == audit_tool_group
+          - not audit_verify_tool_stat.stat.wgrp
+          - not audit_verify_tool_stat.stat.woth
+        fail_msg: >-
+          Audit tool access is not aligned:
+          {{ audit_verify_tool_stat.audit_verify_tool }}. Expected owner
+          {{ audit_tool_owner }}:{{ audit_tool_group }} and mode
+          {{ audit_tool_mode }} or more restrictive. Actual ownership is
+          {{ audit_verify_tool_stat.stat.pw_name | default('unknown') }}:
+          {{ audit_verify_tool_stat.stat.gr_name | default('unknown') }} with mode
+          {{ audit_verify_tool_stat.stat.mode | default('unknown') }}.
+        quiet: true
+      loop: "{{ audit_verify_tool_stats.results }}"
+      loop_control:
+        loop_var: audit_verify_tool_stat
+        label: >-
+          {{
+            audit_verify_tool_stat.audit_verify_tool
+            | default('unknown audit tool')
+          }}
+      when:
+        - audit_manage_file_access
+        - audit_verify_tool_stat.stat is defined
+        - audit_verify_tool_stat.stat.exists | default(false)
+      tags:
+        - audit
+        - validate

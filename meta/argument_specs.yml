@@ -243,6 +243,97 @@ argument_specs:
       audit_rules_files:
         type: list
         elements: str
-        default: []
+        default:
+          - 40-identity.rules
+          - 40-login.rules
+          - 50-network.rules
+          - 50-sudoers.rules
+          - 55-privileged.rules
+          - 60-pam.rules
+          - 70-mac-policy.rules
+          - 70-sessions.rules
         description:
           - Ordered list of rule template files to deploy from templates/.
+          - Defaults to a conservative cross-platform CIS audit baseline.
+
+      audit_manage_file_access:
+        type: bool
+        default: false
+        description:
+          - Manage CIS-aligned ownership and permissions for audit files and tools.
+
+      audit_log_directory_mode:
+        type: str
+        default: '0750'
+        description:
+          - Mode applied to the configured audit log directory.
+
+      audit_log_file_mode:
+        type: str
+        default: '0640'
+        description:
+          - Mode applied to existing audit log files.
+
+      audit_log_file_owner:
+        type: str
+        default: root
+        description:
+          - Owner applied to existing audit log files.
+
+      audit_log_file_group:
+        type: str
+        default: root
+        choices:
+          - root
+          - adm
+        description:
+          - Group applied to the audit log directory and existing audit log files.
+
+      audit_config_file_mode:
+        type: str
+        default: '0640'
+        description:
+          - Mode applied to audit configuration and rule files.
+
+      audit_config_file_owner:
+        type: str
+        default: root
+        description:
+          - Owner applied to audit configuration and rule files.
+
+      audit_config_file_group:
+        type: str
+        default: root
+        description:
+          - Group applied to audit configuration and rule files.
+
+      audit_tool_owner:
+        type: str
+        default: root
+        description:
+          - Owner applied to installed audit tools.
+
+      audit_tool_group:
+        type: str
+        default: root
+        description:
+          - Group applied to installed audit tools.
+
+      audit_tool_mode:
+        type: str
+        default: '0755'
+        description:
+          - Mode applied to installed audit tools.
+
+      audit_tools:
+        type: list
+        elements: str
+        default:
+          - /sbin/auditctl
+          - /sbin/aureport
+          - /sbin/ausearch
+          - /sbin/autrace
+          - /sbin/auditd
+          - /sbin/augenrules
+        description:
+          - Audit tool paths whose ownership and modes are managed when present.

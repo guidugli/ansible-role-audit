@@ -1,6 +1,26 @@
 ---
+
 - name: Run semantic validation
   ansible.builtin.import_tasks: assert.yml
 
+  tags:
+    - audit
+    - config
+
 - name: Configure auditd
   ansible.builtin.import_tasks: audit.yml
+  tags:
+    - audit
+    - config
+
+- name: Configure audit file-access controls
+  ansible.builtin.include_tasks:
+    file: file_access.yml
+    apply:
+      tags:
+        - audit
+        - config
+  when: audit_manage_file_access
+  tags:
+    - audit
+    - config

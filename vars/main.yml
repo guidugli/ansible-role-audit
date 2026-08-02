@@ -28,6 +28,20 @@ audit_packages: >-
 audit_config_path: /etc/audit/auditd.conf
 audit_rulesd_path: /etc/audit/rules.d
 
+_audit_config_effective_mode: >-
+  {{
+    audit_config_file_mode
+    if audit_manage_file_access
+    else '0644'
+  }}
+
+_audit_rule_effective_mode: >-
+  {{
+    audit_config_file_mode
+    if audit_manage_file_access
+    else '0600'
+  }}
+
 _container_types:
   - docker
   - podman

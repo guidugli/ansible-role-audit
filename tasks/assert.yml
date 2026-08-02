@@ -1,4 +1,5 @@
 ---
+
 - name: Validate audit_space_left format
   ansible.builtin.assert:
     quiet: true
@@ -16,6 +17,10 @@
     fail_msg: >-
       audit_space_left must be an integer MiB value or a percentage string such as 5%.
 
+  tags:
+    - audit
+    - validate
+
 - name: Validate audit_flush and audit_freq combination
   ansible.builtin.assert:
     quiet: true
@@ -26,6 +31,10 @@
       incremental_async.
   when: audit_flush | string | lower in ['incremental', 'incremental_async']
 
+  tags:
+    - audit
+    - validate
+
 - name: Validate audit_name when audit_name_format is user
   ansible.builtin.assert:
     quiet: true
@@ -34,6 +43,10 @@
     fail_msg: >-
       audit_name must be set to a non-empty value when audit_name_format is user.
   when: audit_name_format | string | lower == 'user'
+
+  tags:
+    - audit
+    - validate
 
 - name: Validate Kerberos inputs when audit_transport is krb5
   ansible.builtin.assert:
@@ -46,12 +59,20 @@
       audit_transport is krb5.
   when: audit_transport | string | lower == 'krb5'
 
+  tags:
+    - audit
+    - validate
+
 - name: Validate audit_sudo_log is non-empty
   ansible.builtin.assert:
     quiet: true
     that:
       - audit_sudo_log | string | trim | length > 0
     fail_msg: audit_sudo_log must be a non-empty path.
+
+  tags:
+    - audit
+    - validate
 
 - name: Validate requested audit rule templates are supported
   ansible.builtin.assert:
@@ -62,3 +83,20 @@
       Unsupported rule template '{{ item }}'. Supported values are:
       {{ _audit_available_rule_templates | join(', ') }}
   loop: '{{ audit_rules_files }}'
+  tags:
+    - audit
+    - validate
+
+- name: Validate CIS audit log group
+  ansible.builtin.assert:
+    that:
+      - audit_log_file_group in ['root', 'adm']
+      - audit_log_group | length == 0 or audit_log_group == audit_log_file_group
+    fail_msg: >-
+      audit_log_file_group must be root or adm. When audit_log_group is
+      configured, it must match audit_log_file_group.
+    quiet: true
+  when: audit_manage_file_access
+  tags:
+    - audit
+    - validate

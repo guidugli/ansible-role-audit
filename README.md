@@ -1,138 +1,130 @@
+[![CI](https://github.com/guidugli/ansible-role-audit/actions/workflows/CI.yml/badge.svg)](https://github.com/guidugli/ansible-role-audit/actions/workflows/CI.yml)
+[![Release](https://img.shields.io/github/v/tag/guidugli/ansible-role-audit?label=release)](https://github.com/guidugli/ansible-role-audit/tags)
+[![Ansible Galaxy](https://img.shields.io/badge/Ansible%20Galaxy-guidugli.audit-blue)](https://galaxy.ansible.com/ui/standalone/roles/guidugli/audit/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 # Ansible Role: audit
 
-[![CI](https://github.com/guidugli/ansible-role-audit/actions/workflows/CI.yml/badge.svg)](https://github.com/guidugli/ansible-role-audit/actions/workflows/CI.yml)
-[![Release](https://github.com/guidugli/ansible-role-audit/actions/workflows/release.yml/badge.svg)](https://github.com/guidugli/ansible-role-audit/actions/workflows/release.yml)
-[![Galaxy](https://img.shields.io/badge/galaxy-guidugli.audit-blue.svg)](https://galaxy.ansible.com/ui/standalone/roles/guidugli/audit/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+Installs and configures Linux auditd, manages selected reusable audit rule templates, and validates the resulting configuration across supported Debian, Ubuntu, and Fedora targets.
 
-Install and configure Linux auditing with `auditd`, deploy reusable rule templates,
-and validate the resulting configuration across modern Debian, Ubuntu LTS, and
-Fedora releases.
+## Requirements
 
-## Overview
-
-This role is intended for security-focused Linux baselines that want reusable,
-composable audit rules instead of one monolithic rules file. It supports package
-installation, `auditd.conf` tuning, selective rule deployment into
-`/etc/audit/rules.d`, and idempotent rule reloads.
+- Ansible Core 2.14 or newer, as declared by role metadata.
+- A supported Linux target with the distribution audit packages.
+- Root-level access for package, service, `/etc/audit`, and audit-rule operations. Supply privilege externally.
+- `containers.podman` 1.10.0 or newer for the bundled Molecule scenarios.
 
 ## Features
 
-- Multi-distro support for Debian, Ubuntu LTS, and Fedora.
-- Explicit defaults for all public variables.
-- Native `meta/argument_specs.yml` validation plus semantic asserts in
-  `tasks/assert.yml`.
-- Container-aware service handling for Molecule scenarios.
-- Shared Molecule structure with generated inventories.
-- Generated Galaxy metadata based on the shared Molecule platform matrix.
-- Rule template validation to catch typos early.
+- Distribution-aware audit package installation.
+- Idempotent `auditd.conf` management.
+- Allow-listed, selectable audit rule deployment.
+- GRUB audit parameter validation on applicable non-container systems.
+- Container-aware service and reload behavior.
+- Argument-spec validation for all public role inputs.
+- Shared Molecule converge and verification plays.
 
 ## Supported platforms
 
-The shared Molecule matrix currently targets:
+The shared Molecule matrix covers Ubuntu 26.04 and 24.04, Debian 13 and 12, and Fedora 44 and 43. Galaxy platform metadata is generated from that matrix.
 
-- Ubuntu 26.04 / 24.04
-- Debian 13 / 12
-- Fedora 44 / 43
+## Variables
 
-Galaxy metadata is generated from the same source of truth in
-`molecule/shared/vars.yml`.
-
-## Role variables
+All public variables are defined in `defaults/main.yml` and validated by `meta/argument_specs.yml`.
 
 ### Core behavior
 
-```yaml
-audit_local_events: true
-audit_skip_grub_check: false
-audit_write_logs: true
-```
+| Variable | Type | Default | Description |
+|---|---|---|---|
+| `audit_local_events` | bool | `true` | Include local events in the audit stream. |
+| `audit_skip_grub_check` | bool | `false` | Skip checks for `audit=1` and `audit_backlog_limit` in GRUB configuration. |
+| `audit_write_logs` | bool | `true` | Write audit events to disk. |
 
-### `auditd.conf` settings
+### Audit log and rotation
 
-```yaml
-audit_log_file: ''
-audit_log_format: enriched
-audit_log_group: ''
-audit_priority_boost: 4
-audit_flush: incremental_async
-audit_freq: 50
-audit_num_logs: 5
-audit_name_format: none
-audit_name: ''
-audit_max_log_file: 256
-audit_max_log_file_action: keep_logs
-audit_verify_email: true
-audit_action_mail_acct: ''
-audit_space_left: 75
-audit_space_left_action: email
-audit_admin_space_left: 50
-audit_admin_space_left_action: suspend
-audit_disk_full_action: suspend
-audit_disk_error_action: suspend
-```
+| Variable | Type | Default | Description |
+|---|---|---|---|
+| `audit_log_file` | string | `''` | Optional audit log path. Empty leaves the existing directive unchanged. |
+| `audit_log_format` | string | `enriched` | Audit log format, `raw` or `enriched`. |
+| `audit_log_group` | string | `''` | Optional group allowed to read audit logs. |
+| `audit_priority_boost` | int | `4` | Audit daemon priority boost. |
+| `audit_flush` | string | `incremental_async` | Log flush strategy. |
+| `audit_freq` | int | `50` | Records between flushes for incremental modes. |
+| `audit_num_logs` | int | `5` | Number of rotated logs retained. |
+| `audit_name_format` | string | `none` | Host-name format included in events. |
+| `audit_name` | string | `''` | Explicit host name when `audit_name_format` is `user`. |
+| `audit_max_log_file` | int | `256` | Maximum audit log size in MiB. |
+| `audit_max_log_file_action` | string | `keep_logs` | Action when the maximum log size is reached. |
+| `audit_verify_email` | bool | `true` | Verify the configured notification account. |
+| `audit_action_mail_acct` | string | `''` | Optional notification account. |
+| `audit_space_left` | raw | `75` | Free-space threshold in MiB or a percentage string. |
+| `audit_space_left_action` | string | `email` | Action at the free-space threshold. |
+| `audit_admin_space_left` | int | `50` | Administrative free-space threshold. |
+| `audit_admin_space_left_action` | string | `suspend` | Action at the administrative threshold. |
+| `audit_disk_full_action` | string | `suspend` | Action when the filesystem is full. |
+| `audit_disk_error_action` | string | `suspend` | Action on audit-log filesystem errors. |
 
-### Remote audit transport
+### Remote transport and plugins
 
-```yaml
-audit_tcp_listen_port: 60
-audit_tcp_listen_queue: 5
-audit_tcp_max_per_addr: 1
-audit_use_libwrap: true
-audit_tcp_client_ports: '1024-65535'
-audit_tcp_client_max_idle: 0
-audit_transport: tcp
-audit_krb5_principal: ''
-audit_krb5_key_file: ''
-audit_distribute_network: false
-audit_q_depth: 400
-audit_overflow_action: syslog
-audit_max_restarts: 10
-audit_plugin_dir: /etc/audit/plugins.d
-```
+| Variable | Type | Default | Description |
+|---|---|---|---|
+| `audit_tcp_listen_port` | int | `60` | TCP listener port. |
+| `audit_tcp_listen_queue` | int | `5` | Pending TCP connection queue length. |
+| `audit_tcp_max_per_addr` | int | `1` | Maximum connections per source address. |
+| `audit_use_libwrap` | bool | `true` | Enable libwrap access controls. |
+| `audit_tcp_client_ports` | string | `'1024-65535'` | Allowed client source-port range. |
+| `audit_tcp_client_max_idle` | int | `0` | Client idle timeout. |
+| `audit_transport` | string | `tcp` | Remote transport, `tcp` or `krb5`. |
+| `audit_krb5_principal` | string | `''` | Kerberos principal required by `krb5` transport. |
+| `audit_krb5_key_file` | string | `''` | Kerberos key file required by `krb5` transport. |
+| `audit_distribute_network` | bool | `false` | Distribute network-originated events. |
+| `audit_q_depth` | int | `400` | Event queue depth. |
+| `audit_overflow_action` | string | `syslog` | Action when the queue overflows. |
+| `audit_max_restarts` | int | `10` | Maximum plugin restart attempts. |
+| `audit_plugin_dir` | string | `/etc/audit/plugins.d` | Audit plugin configuration directory. |
 
 ### Rule deployment
 
+| Variable | Type | Default | Description |
+|---|---|---|---|
+| `force_overwrite_audit` | bool | `true` | Replace managed rule files when content differs. |
+| `audit_sudo_log` | string | `/var/log/sudo.log` | Sudo log path referenced by `50-sudoers.rules`. |
+| `audit_rules_files` | list(string) | See baseline below | Ordered allow-listed templates deployed into `/etc/audit/rules.d`. |
+
+Default cross-platform baseline:
+
 ```yaml
-force_overwrite_audit: true
-audit_sudo_log: "{{ sudo_log | default('/var/log/sudo.log') }}"
-audit_rules_files: []
+audit_rules_files:
+  - 40-identity.rules
+  - 40-login.rules
+  - 50-network.rules
+  - 50-sudoers.rules
+  - 55-privileged.rules
+  - 60-pam.rules
+  - 70-mac-policy.rules
+  - 70-sessions.rules
 ```
 
-## Built-in rule templates
+This default closes the empty-rule-set gap and is intentionally conservative. It is not a complete CIS Debian 13 or RHEL 10 profile. Distribution-specific syscall, architecture, retention, and runtime reconciliation controls still require dedicated profiles and host-level compliance validation.
 
-Examples available under `templates/` include:
+### Audit file-access controls
 
-- `01-init.rules`
-- `10-self-audit.rules`
-- `20-filters.rules`
-- `30-kernel.rules`
-- `40-identity.rules`
-- `40-login.rules`
-- `50-pkg-manager.rules`
-- `50-sudoers.rules`
-- `55-privileged.rules`
-- `60-sshd.rules`
-- `80-suspicious.rules`
-- `95-32bit-api-exploitation.rules`
+| Variable | Type | Default | Description |
+|---|---|---|---|
+| `audit_manage_file_access` | bool | `false` | Manage ownership and permissions for the audit log directory, existing audit logs, audit configuration files, and installed audit tools. |
+| `audit_log_directory_mode` | string | `'0750'` | Exact mode applied to the effective audit log directory. |
+| `audit_log_file_mode` | string | `'0640'` | Exact mode applied to existing regular files in the effective audit log directory. |
+| `audit_log_file_owner` | string | `root` | Owner applied to existing audit log files. |
+| `audit_log_file_group` | string | `root` | Group applied to the audit log directory and existing audit log files. |
+| `audit_config_file_mode` | string | `'0640'` | Exact mode applied to `*.conf` and `*.rules` files below `/etc/audit`. |
+| `audit_config_file_owner` | string | `root` | Owner applied to audit configuration and rule files. |
+| `audit_config_file_group` | string | `root` | Group applied to audit configuration and rule files. |
+| `audit_tool_owner` | string | `root` | Owner applied to configured audit tools that exist. |
+| `audit_tool_group` | string | `root` | Group applied to configured audit tools that exist. |
+| `audit_tool_mode` | string | `'0755'` | Exact mode applied to configured audit tools that exist. |
+| `audit_tools` | list(string) | See defaults | Audit tool paths inspected and managed when present. |
 
-The full allow-list is maintained in `vars/main.yml` and is used by
-`tasks/assert.yml` to reject unknown template names before deployment.
-
-## How it works
-
-1. Installs audit packages appropriate to the distribution.
-2. Optionally validates GRUB kernel parameters on non-container targets.
-3. Applies selected `auditd.conf` settings idempotently.
-4. Discovers privileged SUID/SGID binaries for `55-privileged.rules`.
-5. Deploys selected rule templates into `/etc/audit/rules.d/`.
-6. Ensures the immutable finalize rule contains `-e 2`.
-7. Reloads rules with `augenrules --load` when configuration changes.
-
-## Usage examples
-
-### Minimal usage
+## Example playbook
 
 ```yaml
 ---
@@ -141,114 +133,41 @@ The full allow-list is maintained in `vars/main.yml` and is used by
   become: true
   roles:
     - role: guidugli.audit
-```
-
-### Selected rule files
-
-```yaml
----
-- name: Configure audit rules
-  hosts: all
-  become: true
-  roles:
-    - role: guidugli.audit
       vars:
         audit_rules_files:
           - 01-init.rules
-          - 10-self-audit.rules
-          - 30-kernel.rules
           - 40-identity.rules
           - 50-sudoers.rules
           - 55-privileged.rules
-          - 95-32bit-api-exploitation.rules
 ```
 
-### Remote transport with Kerberos
-
-```yaml
----
-- name: Configure remote audit transport
-  hosts: audit_servers
-  become: true
-  roles:
-    - role: guidugli.audit
-      vars:
-        audit_transport: krb5
-        audit_krb5_principal: auditd
-        audit_krb5_key_file: /etc/audit/audit.key
-```
-
-## Design notes
-
-- The role does **not** hardcode `become` inside role tasks. Callers should set
-  privilege escalation at the play level.
-- Optional string settings use empty strings where “unset” semantics are needed,
-  and the tasks only render those directives when the value is non-empty.
-- `meta/argument_specs.yml` is the primary input-validation layer; tasks do not
-  duplicate `validate_argument_spec`.
-- Container scenarios validate file/config behavior and skip assumptions that do
-  not make sense for `auditd` runtime behavior inside ordinary containers.
-
-## Molecule testing
-
-This role uses a shared Molecule structure:
-
-```text
-molecule/
-  shared/
-    vars.yml
-    converge.yml
-    verify.yml
-  default/
-  systemd/
-```
-
-### Run locally
+## Molecule testing instructions
 
 ```bash
-./scripts/run_local.sh
-```
-
-Or run scenarios individually:
-
-```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+ansible-galaxy collection install -r requirements.yml
 molecule test -s default
 molecule test -s systemd
 ```
 
+A convenience wrapper is also available as `./scripts/run_local.sh`.
+
+## Execution notes
+
+- **Privilege model:** role tasks never set privilege escalation. Use `become: true` at play, inventory, or automation-controller level for real hosts.
+- **Container behavior:** Molecule containers execute as root. Service start/reload and GRUB checks are skipped for recognized container connections or virtualization types.
+- **Systemd behavior:** auditd service tasks retain existing runtime guards. The systemd scenario supplies a systemd-capable container for service verification.
+- **Immutable rules:** the role writes `99-finalize.rules` with `-e 2`. Review the operational impact before deployment because changing loaded rules can require a reboot.
+
 ## Release workflow
 
-`molecule/shared/vars.yml` is the source of truth for tested platforms. The
-release metadata workflow regenerates:
-
-- `molecule/default/inventory/hosts.yml`
-- `molecule/systemd/inventory/hosts.yml`
-- `meta/main.yml`
-
-Refresh generated artifacts with:
+Refresh generated metadata and inventories, then prepare a release:
 
 ```bash
 ./scripts/update_release_metadata.sh
-```
-
-Prepare a release with:
-
-```bash
 ./scripts/release.sh --version v1.2.0 --message "Release v1.2.0"
-```
-
-## Repository structure
-
-```text
-defaults/
-vars/
-tasks/
-handlers/
-templates/
-meta/
-molecule/
-scripts/
-.github/workflows/
 ```
 
 ## License

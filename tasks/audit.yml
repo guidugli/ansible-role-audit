@@ -1,22 +1,36 @@
 ---
+
 - name: Refresh apt cache on Debian-family systems
   ansible.builtin.apt:
     update_cache: true
   when: ansible_facts.get('os_family', '') == 'Debian'
+
+  tags:
+    - audit
+    - install
 
 - name: Install audit packages
   ansible.builtin.package:
     name: '{{ audit_packages }}'
     state: present
 
+  tags:
+    - audit
+    - install
+
 - name: Enable and start auditd service on non-container targets
   ansible.builtin.systemd_service:
     name: auditd
+    masked: false
     enabled: true
     state: started
   when:
+    - ansible_facts['service_mgr'] == 'systemd'
     - ansible_facts.get('virtualization_type', '') not in _container_types
     - ansible_connection not in _container_types
+  tags:
+    - audit
+    - service
 
 - name: Check whether GRUB contains audit=1
   ansible.builtin.lineinfile:
@@ -31,6 +45,10 @@
     - ansible_facts.get('virtualization_type', '') not in _container_types
     - ansible_connection not in _container_types
 
+  tags:
+    - audit
+    - validate
+
 - name: Fail when GRUB does not contain audit=1
   ansible.builtin.fail:
     msg: >-
@@ -41,6 +59,10 @@
     - ansible_facts.get('virtualization_type', '') not in _container_types
     - ansible_connection not in _container_types
     - not audit_cmdline_audit1.found
+
+  tags:
+    - audit
+    - validate
 
 - name: Check whether GRUB contains audit_backlog_limit
   ansible.builtin.lineinfile:
@@ -55,6 +77,10 @@
     - ansible_facts.get('virtualization_type', '') not in _container_types
     - ansible_connection not in _container_types
 
+  tags:
+    - audit
+    - validate
+
 - name: Fail when GRUB does not contain audit_backlog_limit
   ansible.builtin.fail:
     msg: >-
@@ -66,6 +92,10 @@
     - ansible_connection not in _container_types
     - not audit_cmdline_backlog.found
 
+  tags:
+    - audit
+    - validate
+
 - name: Read UID_MIN from /etc/login.defs
   ansible.builtin.command:
     argv:
@@ -75,9 +105,17 @@
   register: audit_uid_min_cmd
   changed_when: false
 
+  tags:
+    - audit
+    - config
+
 - name: Set minimum audited UID
   ansible.builtin.set_fact:
     audit_uid_min: '{{ audit_uid_min_cmd.stdout | default("1000", true) | trim }}'
+
+  tags:
+    - audit
+    - config
 
 - name: Apply boolean auditd.conf settings
   ansible.builtin.lineinfile:
@@ -86,9 +124,12 @@
     line: >-
       {{ _audit_vars[item] }} =
       {{ (lookup('vars', item) | bool) | ternary('yes', 'no') }}
-    mode: '0644'
+    mode: "{{ _audit_config_effective_mode }}"
   loop: '{{ _audit_bool_vars }}'
   notify: reload auditd
+  tags:
+    - audit
+    - config
 
 - name: Apply scalar auditd.conf settings
   ansible.builtin.lineinfile:
@@ -101,12 +142,15 @@
         if item in _audit_lowercase_option_vars
         else (lookup('vars', item) | string)
       }}
-    mode: '0644'
+    mode: "{{ _audit_config_effective_mode }}"
   loop: '{{ _audit_config_items }}'
   when:
-    - item not in _audit_optional_string_vars
-      or (lookup('vars', item) | string | trim | length > 0)
+    - item not in _audit_optional_string_vars or (lookup('vars', item) | string | trim | length > 0)
   notify: reload auditd
+
+  tags:
+    - audit
+    - config
 
 - name: Find privileged commands
   ansible.builtin.command:
@@ -127,27 +171,42 @@
   register: audit_privileged_commands_cmd
   changed_when: false
 
+  tags:
+    - audit
+    - config
+
 - name: Set privileged command list
   ansible.builtin.set_fact:
     audit_priv_command: '{{ audit_privileged_commands_cmd.stdout_lines | default([]) }}'
+
+  tags:
+    - audit
+    - config
 
 - name: Deploy selected audit rule templates
   ansible.builtin.template:
     src: '{{ item }}'
     dest: '{{ audit_rulesd_path }}/{{ item }}'
-    owner: root
-    group: root
-    mode: '0600'
+    owner: "{{ audit_config_file_owner }}"
+    group: "{{ audit_config_file_group }}"
+    mode: "{{ _audit_rule_effective_mode }}"
     force: '{{ force_overwrite_audit }}'
   loop: '{{ audit_rules_files }}'
   notify: reload auditd
+
+  tags:
+    - audit
+    - config
 
 - name: Ensure immutable finalize rule is present
   ansible.builtin.copy:
     dest: '{{ audit_rulesd_path }}/99-finalize.rules'
     content: |
       -e 2
-    owner: root
-    group: root
-    mode: '0600'
+    owner: "{{ audit_config_file_owner }}"
+    group: "{{ audit_config_file_group }}"
+    mode: "{{ _audit_rule_effective_mode }}"
   notify: reload auditd
+  tags:
+    - audit
+    - config
