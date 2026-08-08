@@ -109,10 +109,27 @@
     - audit
     - config
 
-- name: Set minimum audited UID
-  ansible.builtin.set_fact:
-    audit_uid_min: '{{ audit_uid_min_cmd.stdout | default("1000", true) | trim }}'
+- name: Validate minimum audited UID
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - audit_uid_min_cmd.stdout | trim is match('^[0-9]+$')
+    fail_msg: >-
+      Unable to determine a numeric UID_MIN from /etc/login.defs.
+  tags:
+    - audit
+    - validate
 
+- name: Set audit rendering facts
+  ansible.builtin.set_fact:
+    audit_uid_min: '{{ audit_uid_min_cmd.stdout | trim }}'
+    _audit_rule_architectures: >-
+      {{
+        ['b64', 'b32']
+        if ansible_facts['architecture'] == 'x86_64'
+        else ['b64']
+      }}
+  changed_when: false
   tags:
     - audit
     - config
@@ -170,6 +187,7 @@
       - -print
   register: audit_privileged_commands_cmd
   changed_when: false
+  when: "'55-privileged.rules' in audit_rules_files"
 
   tags:
     - audit
@@ -177,8 +195,10 @@
 
 - name: Set privileged command list
   ansible.builtin.set_fact:
-    audit_priv_command: '{{ audit_privileged_commands_cmd.stdout_lines | default([]) }}'
-
+    audit_priv_command: >-
+      {{ audit_privileged_commands_cmd.stdout_lines | default([]) | sort }}
+  changed_when: false
+  when: "'55-privileged.rules' in audit_rules_files"
   tags:
     - audit
     - config
@@ -198,7 +218,7 @@
     - audit
     - config
 
-- name: Ensure immutable finalize rule is present
+- name: Configure immutable audit finalization
   ansible.builtin.copy:
     dest: '{{ audit_rulesd_path }}/99-finalize.rules'
     content: |
@@ -206,6 +226,17 @@
     owner: "{{ audit_config_file_owner }}"
     group: "{{ audit_config_file_group }}"
     mode: "{{ _audit_rule_effective_mode }}"
+  when: audit_immutable
+  notify: reload auditd
+  tags:
+    - audit
+    - config
+
+- name: Remove immutable audit finalization when disabled
+  ansible.builtin.file:
+    path: '{{ audit_rulesd_path }}/99-finalize.rules'
+    state: absent
+  when: not audit_immutable
   notify: reload auditd
   tags:
     - audit

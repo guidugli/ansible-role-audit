@@ -12,3 +12,6 @@
 
 # Ansible local role/cache
 .ansible/
+
+# CIS Documents
+.cis/

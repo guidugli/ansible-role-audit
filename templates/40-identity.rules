@@ -1,16 +1,37 @@
-## User, group, password databases
--w /etc/group -p wa -k identity
--w /etc/passwd -p wa -k identity
--w /etc/gshadow -p wa -k identity
--w /etc/shadow -p wa -k identity
--w /etc/security/opasswd -p wa -k identity
+# Managed by Ansible. Local changes will be overwritten.
 
-## Tools to change group identifiers
--w /usr/sbin/groupadd -p x -k group_modification
--w /usr/sbin/groupmod -p x -k group_modification
--w /usr/sbin/addgroup -p x -k group_modification
--w /usr/sbin/useradd -p x -k user_modification
--w /usr/sbin/userdel -p x -k user_modification
--w /usr/sbin/usermod -p x -k user_modification
--w /usr/sbin/adduser -p x -k user_modification
+# User, group, and password databases
+{% set audit_identity_paths = [
+  '/etc/group',
+  '/etc/passwd',
+  '/etc/gshadow',
+  '/etc/shadow',
+  '/etc/security/opasswd'
+] %}
+{% for audit_path in audit_identity_paths %}
+-a always,exit -F path={{ audit_path }} -F perm=wa -k identity
+{% endfor %}
 
+# Account-management tools
+{% if ansible_facts['os_family'] == 'Debian' %}
+{% set audit_account_tools = [
+  '/usr/sbin/groupadd',
+  '/usr/sbin/groupmod',
+  '/usr/sbin/addgroup',
+  '/usr/sbin/useradd',
+  '/usr/sbin/userdel',
+  '/usr/sbin/usermod',
+  '/usr/sbin/adduser'
+] %}
+{% else %}
+{% set audit_account_tools = [
+  '/usr/sbin/groupadd',
+  '/usr/sbin/groupmod',
+  '/usr/sbin/useradd',
+  '/usr/sbin/userdel',
+  '/usr/sbin/usermod'
+] %}
+{% endif %}
+{% for audit_path in audit_account_tools %}
+-a always,exit -F path={{ audit_path }} -F perm=x -k account_modification
+{% endfor %}

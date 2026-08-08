@@ -1,12 +1,18 @@
-### Changes to other files
--w /etc/hosts -p wa -k network_modifications
--w /etc/sysconfig/network -p wa -k network_modifications
--w /etc/sysconfig/network-scripts -p w -k network_modifications
--w /etc/network/ -p wa -k network_modifications
--w /etc/networks -p wa -k network_modifications
--a always,exit -F dir=/etc/NetworkManager/ -F perm=wa -k network_modifications
+# Managed by Ansible. Local changes will be overwritten.
 
-### Changes to issue
--w /etc/issue -p wa -k etcissue
--w /etc/issue.net -p wa -k etcissue
+# Common network configuration
+-a always,exit -F path=/etc/hosts -F perm=wa -k network_modifications
+-a always,exit -F path=/etc/networks -F perm=wa -k network_modifications
 
+{% if ansible_facts['os_family'] == 'Debian' %}
+-a always,exit -F dir=/etc/network -F perm=wa -k network_modifications
+{% endif %}
+
+{% if ansible_facts['distribution'] == 'Fedora' %}
+-a always,exit -F path=/etc/sysconfig/network -F perm=wa -k network_modifications
+-a always,exit -F dir=/etc/NetworkManager -F perm=wa -k network_modifications
+{% endif %}
+
+# Login banner configuration
+-a always,exit -F path=/etc/issue -F perm=wa -k etcissue
+-a always,exit -F path=/etc/issue.net -F perm=wa -k etcissue

@@ -1,6 +1,6 @@
-# Privileged processes with suid/sgid set
-# The list is generated automatically by the role based on the target system
+# Managed by Ansible. Local changes will be overwritten.
 
-{% for auxcmd in audit_priv_command %}
--a always,exit -F path={{ auxcmd }} -F perm=x -F auid>={{ audit_uid_min }} -F auid!=unset -k privileged
+# Privileged processes with setuid or setgid bits
+{% for audit_privileged_command in audit_priv_command %}
+-a always,exit -F path={{ audit_privileged_command }} -F perm=x -F auid>={{ audit_uid_min }} -F auid!=unset -k privileged
 {% endfor %}

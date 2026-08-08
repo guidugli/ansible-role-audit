@@ -1,3 +1,6 @@
-## Root command executions
--a always,exit -F arch=b64 -F euid=0 -F auid>={{ audit_uid_min }} -F auid!=unset -S execve -k rootcmd
--a always,exit -F arch=b32 -F euid=0 -F auid>={{ audit_uid_min }} -F auid!=unset -S execve -k rootcmd
+# Managed by Ansible. Local changes will be overwritten.
+
+# Commands executed with effective UID 0 by interactive users
+{% for audit_architecture in _audit_rule_architectures %}
+-a always,exit -F arch={{ audit_architecture }} -F euid=0 -F auid>={{ audit_uid_min }} -F auid!=unset -S execve -k rootcmd
+{% endfor %}

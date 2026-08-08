@@ -81,6 +81,7 @@
       ansible.builtin.stat:
         path: /etc/audit/rules.d/99-finalize.rules
       register: audit_finalize_rule_stat
+      when: audit_immutable
 
       tags:
         - audit
@@ -104,6 +105,7 @@
           {{ audit_finalize_rule_stat.stat.gr_name | default('unknown') }}
           with mode
           {{ audit_finalize_rule_stat.stat.mode | default('unknown') }}.
+      when: audit_immutable
       tags:
         - audit
         - validate
@@ -118,6 +120,7 @@
           - /etc/audit/rules.d/99-finalize.rules
       register: audit_finalize_rule_content
       changed_when: false
+      when: audit_immutable
 
       tags:
         - audit
@@ -129,6 +132,7 @@
         that:
           - audit_finalize_rule_content.rc == 0
         fail_msg: /etc/audit/rules.d/99-finalize.rules must contain -e 2.
+      when: audit_immutable
 
       tags:
         - audit
@@ -428,6 +432,121 @@
         - audit_manage_file_access
         - audit_verify_tool_stat.stat is defined
         - audit_verify_tool_stat.stat.exists | default(false)
+      tags:
+        - audit
+        - validate
+
+    - name: Read selected platform-aware rule files
+      ansible.builtin.slurp:
+        src: '/etc/audit/rules.d/{{ item }}'
+      loop:
+        - 50-network.rules
+        - 70-mac-policy.rules
+      register: audit_platform_rule_files
+      when: item in audit_rules_files
+      tags:
+        - audit
+        - validate
+
+    - name: Set rendered platform rule content
+      ansible.builtin.set_fact:
+        audit_network_rule_content: >-
+          {{
+            (
+              audit_platform_rule_files.results
+              | selectattr('item', 'equalto', '50-network.rules')
+              | map(attribute='content')
+              | first
+              | default('')
+            )
+            | b64decode
+          }}
+        audit_mac_rule_content: >-
+          {{
+            (
+              audit_platform_rule_files.results
+              | selectattr('item', 'equalto', '70-mac-policy.rules')
+              | map(attribute='content')
+              | first
+              | default('')
+            )
+            | b64decode
+          }}
+      changed_when: false
+      tags:
+        - audit
+        - validate
+
+    - name: Assert Debian-family rule rendering
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - >-
+            '-F dir=/etc/network -F perm=wa'
+            in audit_network_rule_content
+          - >-
+            '-F path=/etc/sysconfig/network -F perm=wa'
+            not in audit_network_rule_content
+          - "'/etc/apparmor' in audit_mac_rule_content"
+          - "'/etc/selinux' not in audit_mac_rule_content"
+      when: ansible_facts['os_family'] == 'Debian'
+      tags:
+        - audit
+        - validate
+
+    - name: Assert Fedora rule rendering
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - >-
+            '-F path=/etc/sysconfig/network -F perm=wa'
+            in audit_network_rule_content
+          - >-
+            '-F dir=/etc/network -F perm=wa'
+            not in audit_network_rule_content
+          - "'/etc/selinux' in audit_mac_rule_content"
+          - "'/etc/apparmor' not in audit_mac_rule_content"
+      when: ansible_facts['distribution'] == 'Fedora'
+      tags:
+        - audit
+        - validate
+
+    - name: Check modern syntax in selected baseline rules
+      ansible.builtin.command:
+        argv:
+          - grep
+          - -R
+          - -n
+          - --
+          - '^-w '
+          - '/etc/audit/rules.d/{{ item }}'
+      loop:
+        - 40-identity.rules
+        - 40-login.rules
+        - 50-network.rules
+        - 50-sudoers.rules
+        - 60-pam.rules
+        - 70-mac-policy.rules
+        - 70-sessions.rules
+      register: audit_legacy_watch_checks
+      changed_when: false
+      failed_when: audit_legacy_watch_checks.rc not in [0, 1]
+      when: item in audit_rules_files
+      tags:
+        - audit
+        - validate
+
+    - name: Assert selected baseline rules do not use legacy watch syntax
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - item.rc == 1
+        fail_msg: >-
+          {{ item.item }} contains active legacy -w syntax.
+      loop: "{{ audit_legacy_watch_checks.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when: not item.skipped | default(false)
       tags:
         - audit
         - validate

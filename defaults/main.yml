@@ -4,6 +4,7 @@
 audit_local_events: true
 audit_skip_grub_check: false
 audit_write_logs: true
+audit_immutable: true
 
 # auditd.conf settings
 audit_log_file: ''

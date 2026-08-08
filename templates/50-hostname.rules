@@ -1,4 +1,6 @@
-### Changes to hostname
--a always,exit -F arch=b32 -S sethostname -S setdomainname -k network_modifications
--a always,exit -F arch=b64 -S sethostname -S setdomainname -k network_modifications
+# Managed by Ansible. Local changes will be overwritten.
 
+# Hostname and domain-name changes
+{% for audit_architecture in _audit_rule_architectures %}
+-a always,exit -F arch={{ audit_architecture }} -S sethostname -S setdomainname -k network_modifications
+{% endfor %}

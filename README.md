@@ -39,6 +39,7 @@ All public variables are defined in `defaults/main.yml` and validated by `meta/a
 | `audit_local_events` | bool | `true` | Include local events in the audit stream. |
 | `audit_skip_grub_check` | bool | `false` | Skip checks for `audit=1` and `audit_backlog_limit` in GRUB configuration. |
 | `audit_write_logs` | bool | `true` | Write audit events to disk. |
+| `audit_immutable` | bool | `true` | Finalize persistent rules with `-e 2`; set false to keep runtime rule changes loadable. |
 
 ### Audit log and rotation
 
@@ -90,6 +91,8 @@ All public variables are defined in `defaults/main.yml` and validated by `meta/a
 | `force_overwrite_audit` | bool | `true` | Replace managed rule files when content differs. |
 | `audit_sudo_log` | string | `/var/log/sudo.log` | Sudo log path referenced by `50-sudoers.rules`. |
 | `audit_rules_files` | list(string) | See baseline below | Ordered allow-listed templates deployed into `/etc/audit/rules.d`. |
+
+`audit_immutable` defaults to `true`. Set it to `false` to omit `99-finalize.rules` and keep later runtime rule changes loadable.
 
 Default cross-platform baseline:
 

@@ -1,9 +1,10 @@
-## Pam configuration
--w /etc/pam.d/ -p wa -k pam
--w /etc/security/limits.conf -p wa  -k pam
--w /etc/security/limits.d -p wa  -k pam
--w /etc/security/pam_env.conf -p wa -k pam
--w /etc/security/namespace.conf -p wa -k pam
--w /etc/security/namespace.d -p wa -k pam
--w /etc/security/namespace.init -p wa -k pam
+# Managed by Ansible. Local changes will be overwritten.
 
+# PAM and security policy configuration
+-a always,exit -F dir=/etc/pam.d -F perm=wa -k pam
+-a always,exit -F path=/etc/security/limits.conf -F perm=wa -k pam
+-a always,exit -F dir=/etc/security/limits.d -F perm=wa -k pam
+-a always,exit -F path=/etc/security/pam_env.conf -F perm=wa -k pam
+-a always,exit -F path=/etc/security/namespace.conf -F perm=wa -k pam
+-a always,exit -F dir=/etc/security/namespace.d -F perm=wa -k pam
+-a always,exit -F path=/etc/security/namespace.init -F perm=wa -k pam

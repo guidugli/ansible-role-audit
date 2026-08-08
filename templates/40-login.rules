@@ -1,7 +1,12 @@
-## Login configuration and information
--w /etc/login.defs -p wa -k login
--w /etc/securetty -p wa -k login
--w /var/log/faillog -p wa -k login
--w /var/log/lastlog -p wa -k login
--w /var/log/tallylog -p wa -k login
+# Managed by Ansible. Local changes will be overwritten.
 
+# Login configuration and information
+-a always,exit -F path=/etc/login.defs -F perm=wa -k login
+{% if ansible_facts['distribution'] == 'Fedora' %}
+-a always,exit -F path=/etc/securetty -F perm=wa -k login
+{% endif %}
+-a always,exit -F path=/var/log/faillog -F perm=wa -k login
+-a always,exit -F path=/var/log/lastlog -F perm=wa -k login
+{% if ansible_facts['os_family'] == 'RedHat' %}
+-a always,exit -F path=/var/log/tallylog -F perm=wa -k login
+{% endif %}

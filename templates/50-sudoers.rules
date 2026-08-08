@@ -1,5 +1,6 @@
-## Sudoers file changes
--w /etc/sudoers -p wa -k actions
--w /etc/sudoers.d/ -p wa -k actions
--w {{ audit_sudo_log }} -p wa -k actions
+# Managed by Ansible. Local changes will be overwritten.
 
+# Sudo authorization and configured sudo log
+-a always,exit -F path=/etc/sudoers -F perm=wa -k actions
+-a always,exit -F dir=/etc/sudoers.d -F perm=wa -k actions
+-a always,exit -F path={{ audit_sudo_log }} -F perm=wa -k actions

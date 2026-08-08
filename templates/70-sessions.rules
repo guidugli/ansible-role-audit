@@ -1,5 +1,6 @@
-## Session initiation information
--w /var/run/utmp -p wa -k session
--w /var/log/btmp -p wa -k session
--w /var/log/wtmp -p wa -k session
+# Managed by Ansible. Local changes will be overwritten.
 
+# Session initiation information
+-a always,exit -F path=/var/run/utmp -F perm=wa -k session
+-a always,exit -F path=/var/log/btmp -F perm=wa -k session
+-a always,exit -F path=/var/log/wtmp -F perm=wa -k session

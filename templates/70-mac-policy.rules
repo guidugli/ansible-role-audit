@@ -1,11 +1,14 @@
-# app armor
--w /etc/apparmor/ -p wa -k MAC-policy
--w /etc/apparmor.d/ -p wa -k MAC-policy
+# Managed by Ansible. Local changes will be overwritten.
 
-# SELinux events that modify the system's Mandatory Access Controls (MAC)
--w /etc/selinux/ -p wa -k MAC-policy
--w /usr/share/selinux/ -p wa -k MAC-policy
+{% if ansible_facts['os_family'] == 'Debian' %}
+# AppArmor policy
+-a always,exit -F dir=/etc/apparmor -F perm=wa -k MAC-policy
+-a always,exit -F dir=/etc/apparmor.d -F perm=wa -k MAC-policy
+{% endif %}
 
-# chcon - change selinux file security context
+{% if ansible_facts['distribution'] == 'Fedora' %}
+# SELinux policy and context management
+-a always,exit -F dir=/etc/selinux -F perm=wa -k MAC-policy
+-a always,exit -F dir=/usr/share/selinux -F perm=wa -k MAC-policy
 -a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>={{ audit_uid_min }} -F auid!=unset -k MAC-policy
-
+{% endif %}

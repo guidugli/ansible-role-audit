@@ -1,4 +1,10 @@
-## Mount operations
--a always,exit -F arch=b64 -S mount -S umount2 -F auid!=unset -k mount
--a always,exit -F arch=b32 -S mount -S umount -S umount2 -F auid!=unset -k mount
+# Managed by Ansible. Local changes will be overwritten.
 
+# Mount operations
+{% for audit_architecture in _audit_rule_architectures %}
+{% if audit_architecture == 'b32' %}
+-a always,exit -F arch=b32 -S mount -S umount -S umount2 -F auid!=unset -k mount
+{% else %}
+-a always,exit -F arch={{ audit_architecture }} -S mount -S umount2 -F auid!=unset -k mount
+{% endif %}
+{% endfor %}

@@ -26,6 +26,11 @@ argument_specs:
         default: true
         description:
           - Whether audit events are written to disk.
+      audit_immutable:
+        type: bool
+        default: true
+        description:
+          - Finalize the persistent audit rules with immutable mode (-e 2).
       audit_log_format:
         type: str
         default: enriched
