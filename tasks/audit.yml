@@ -1,10 +1,22 @@
 ---
 
-- name: Refresh apt cache on Debian-family systems
+- name: Gather installed packages on Debian-family systems
+  ansible.builtin.package_facts:
+    manager: apt
+  when: ansible_facts.get('os_family', '') == 'Debian'
+  tags:
+    - audit
+    - install
+
+- name: Refresh apt cache when audit packages are missing
   ansible.builtin.apt:
     update_cache: true
-  when: ansible_facts.get('os_family', '') == 'Debian'
-
+  when:
+    - ansible_facts.get('os_family', '') == 'Debian'
+    - >-
+      audit_packages
+      | difference(ansible_facts['packages'].keys() | list)
+      | length > 0
   tags:
     - audit
     - install
